@@ -1,0 +1,272 @@
+{
+	"info": {
+		"_postman_id": "a5782ff9-450d-4ae4-a4fc-29645dbfd96f",
+		"name": "poc_orm",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30205985"
+	},
+	"item": [
+		{
+			"name": "users",
+			"item": [
+				{
+					"name": "manage address",
+					"item": [
+						{
+							"name": "add address",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZmlsZGFuc3lhaEBtYWlsLmNvbSIsImlhdCI6MTcwNzI5MTMzOCwiZXhwIjoxNzA3Mjk0OTM4fQ.wpzJO7qTIXSJ7zuig59tKfo-ledubOoj0P48bSG-zVw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"country\": \"Indonesia\",\r\n    \"city\": \"Jakarta Selatan\",\r\n    \"postal_code\": \"15218\",\r\n    \"telephone\": \"\",\r\n    \"mobile\": \"02112436678\",\r\n    \"receiver_name\" : \"Mama Fildan\",\r\n    \"address\": \"Jalanin aja dulu\"\r\n    \r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8080/user/address",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"user",
+										"address"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "edit address",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZmlsZGFuc3lhaEBtYWlsLmNvbSIsImlhdCI6MTcwNzI5MTMzOCwiZXhwIjoxNzA3Mjk0OTM4fQ.wpzJO7qTIXSJ7zuig59tKfo-ledubOoj0P48bSG-zVw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"country\": \"Indonesia\",\r\n    \"city\": \"Jakarta Selatan\",\r\n    \"postal_code\": \"15218\",\r\n    \"telephone\": \"\",\r\n    \"mobile\": \"02112436678\",\r\n    \"receiver_name\" : \"Kakak Fildan\",\r\n    \"address\": \"Jalanin aja dulu\"\r\n    \r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8080/user/address/3",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"user",
+										"address",
+										"3"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "view user address",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZmlsZGFuc3lhaEBtYWlsLmNvbSIsImlhdCI6MTcwNzI5MTMzOCwiZXhwIjoxNzA3Mjk0OTM4fQ.wpzJO7qTIXSJ7zuig59tKfo-ledubOoj0P48bSG-zVw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8080/user/address",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"user",
+										"address"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete address",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZmlsZGFuc3lhaEBtYWlsLmNvbSIsImlhdCI6MTcwNzI5MTMzOCwiZXhwIjoxNzA3Mjk0OTM4fQ.wpzJO7qTIXSJ7zuig59tKfo-ledubOoj0P48bSG-zVw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:8080/user/address/6",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"user",
+										"address",
+										"6"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"first_name\": \"Fildansyah\",\r\n    \"last_name\": \"Anggadikusumah\",\r\n    \"email\": \"fildansyah@mail.com\",\r\n    \"mobile\": \"12345678\",\r\n    \"password\": \"fildanfildan\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"fildansyah@mail.com\",\r\n    \"password\": \"fildanfildan\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get profile",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZmlsZGFuc3lhaEBtYWlsLmNvbSIsImlhdCI6MTcwNjk0MTkzNCwiZXhwIjoxNzA2OTQ1NTM0fQ.WXoNmRuAOD5H-fYkcz8sTuAyrQec0vAwtEIJ1k3R_HE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/user/profile",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"user",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
