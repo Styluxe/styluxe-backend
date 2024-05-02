@@ -213,9 +213,6 @@ router.post(
       for (const cartItem of cartItems) {
         // Update product stock
         const product = await Product.findByPk(cartItem.product_id);
-        if (product) {
-          await product.decrement("product_stock", { by: cartItem.quantity });
-        }
 
         // Create order item
         await OrderItem.create<any>({

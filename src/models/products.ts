@@ -6,6 +6,7 @@ import {
   BelongsTo,
   HasMany,
   Table,
+  HasOne,
 } from "sequelize-typescript";
 import { User } from "./users";
 
@@ -29,10 +30,55 @@ export class ProductCategory extends Model<ProductCategory> {
   declare category_name: string;
 
   @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare category_icon: string;
+
+  @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
   declare category_description: string;
+
+  @HasMany(() => ProductSubCategory)
+  declare sub_categories: ProductSubCategory[];
+}
+
+@Table({
+  timestamps: true,
+  tableName: "product_sub_category",
+})
+export class ProductSubCategory extends Model<ProductSubCategory> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare product_sub_category_id: number;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare sub_category_name: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare sub_category_image: string;
+
+  @ForeignKey(() => ProductCategory)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare product_category_id: number;
+
+  @BelongsTo(() => ProductCategory)
+  declare category: ProductCategory;
 
   @HasMany(() => Product)
   declare products: Product[];
@@ -69,23 +115,16 @@ export class Product extends Model<Product> {
   })
   declare product_price: number;
 
-  @ForeignKey(() => ProductCategory)
+  @ForeignKey(() => ProductSubCategory)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
-  declare category_id: number;
+  declare sub_category_id: number;
 
-  @BelongsTo(() => ProductCategory)
-  declare category: ProductCategory;
+  @BelongsTo(() => ProductSubCategory)
+  declare sub_category: ProductSubCategory;
 
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_stock: number;
-
-  //enum product gender
   @Column({
     type: DataType.ENUM("male", "female", "unisex"),
     allowNull: true,
@@ -103,6 +142,12 @@ export class Product extends Model<Product> {
 
   @HasMany(() => ProductDiscussion)
   declare discussions: ProductDiscussion[];
+
+  @HasOne(() => ProductCare)
+  declare cares: any;
+
+  @HasOne(() => ProductMaterial)
+  declare materials: any;
 }
 
 @Table({
@@ -133,6 +178,106 @@ export class ProductImage extends Model<ProductImage> {
     allowNull: true,
   })
   declare image_url: string;
+}
+
+@Table({
+  tableName: "product_materials",
+})
+export class ProductMaterial extends Model<ProductMaterial> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare product_material_id: number;
+
+  @ForeignKey(() => Product)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare product_id: number;
+
+  @BelongsTo(() => Product)
+  declare product: Product;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare fabric: string;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare transparency: number;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare thickness: number;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare stretchiness: number;
+}
+
+@Table({
+  tableName: "product_care",
+})
+export class ProductCare extends Model<ProductCare> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare product_care_id: number;
+
+  @ForeignKey(() => Product)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare product_id: number;
+
+  @BelongsTo(() => Product)
+  declare product: Product;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare washing: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare bleaching: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare drying: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare ironing: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare dry_clean: string;
 }
 
 @Table({

@@ -17,13 +17,16 @@ import {
 } from "../models/posts";
 import {
   Product,
+  ProductCare,
   ProductCategory,
   ProductDiscussion,
   ProductDiscussionReply,
   ProductImage,
+  ProductMaterial,
   ProductReview,
   ProductReviewImage,
   ProductSize,
+  ProductSubCategory,
 } from "../models/products";
 import {
   CartItem,
@@ -59,7 +62,10 @@ const connection = new Sequelize({
     Image,
     Bookmark,
     ProductCategory,
+    ProductSubCategory,
     Product,
+    ProductCare,
+    ProductMaterial,
     ProductImage,
     ProductReview,
     ProductReviewImage,

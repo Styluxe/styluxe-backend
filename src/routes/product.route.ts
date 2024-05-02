@@ -9,11 +9,13 @@ import {
   ProductDiscussion,
   ProductDiscussionReply,
   ProductSize,
+  ProductSubCategory,
+  ProductMaterial,
+  ProductCare,
 } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Op } from "sequelize";
 import { User } from "../models/users";
-import { Image } from "../models/posts";
 
 const router = express.Router();
 
@@ -62,6 +64,39 @@ router.post("/category", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
+//create subcategory
+router.post(
+  "/subcategory",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userRole } = getUserIdFromToken(req, res);
+
+      if (userRole !== "admin") {
+        return res.status(401).json({
+          code: 401,
+          status: "Unauthorized",
+          message: "You are not authorized to perform this action.",
+        });
+      }
+
+      const createSubCategory = await ProductSubCategory.create(req.body);
+
+      res.status(201).json({
+        code: 201,
+        message: "Subcategory created successfully",
+        data: createSubCategory,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  }
+);
+
 //delete category
 router.delete(
   "/category/:categoryId",
@@ -102,7 +137,9 @@ router.delete(
 //get all  category
 router.get("/categories", async (req: Request, res: Response) => {
   try {
-    const categories = await ProductCategory.findAll();
+    const categories = await ProductCategory.findAll({
+      include: [{ model: ProductSubCategory }],
+    });
 
     res.status(200).json({
       code: 200,
@@ -131,12 +168,74 @@ router.post("/new", verifyToken, async (req: Request, res: Response) => {
       });
     }
 
-    const createProduct = await Product.create(req.body);
+    const {
+      product_name,
+      product_price,
+      product_description,
+      sub_category_id,
+      product_gender,
+      images,
+      sizes,
+      materials,
+      cares,
+    } = req.body;
+
+    const createProduct = await Product.create({
+      product_name,
+      product_price,
+      product_description,
+      sub_category_id,
+      product_gender,
+    } as Product);
+
+    if (!createProduct || !createProduct.product_id) {
+      throw new Error("Product creation failed or did not return product ID.");
+    }
+
+    const productId = createProduct.product_id;
+
+    const bulkImages = images.map((image: any) => ({
+      product_id: productId,
+      image_url: image.image_url,
+    }));
+
+    const createImages = await ProductImage.bulkCreate<any>(bulkImages);
+
+    const bulkSizes = sizes.map((size: any) => ({
+      product_id: productId,
+      size: size.size,
+      stock: size.stock,
+    }));
+
+    const createSizes = await ProductSize.bulkCreate<any>(bulkSizes);
+
+    const productMaterials = await ProductMaterial.create<any>({
+      product_id: productId,
+      fabric: materials.fabric,
+      transparency: materials.transparency,
+      thickness: materials.thickness,
+      stretchiness: materials.stretchiness,
+    });
+
+    const productCares = await ProductCare.create<any>({
+      product_id: productId,
+      washing: cares.washing,
+      bleaching: cares.bleaching,
+      drying: cares.drying,
+      ironing: cares.ironing,
+      dry_clean: cares.dry_clean,
+    });
 
     res.status(201).json({
       code: 201,
-      message: "Product created sucessfully",
-      data: createProduct,
+      message: "Product and images added successfully",
+      data: {
+        product: createProduct,
+        sizes: createSizes,
+        images: createImages,
+        materials: productMaterials,
+        cares: productCares,
+      },
     });
   } catch (error: any) {
     res.status(500).json({
@@ -147,90 +246,120 @@ router.post("/new", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
-//add bulk image to product
-router.post(
-  "/image/:productId",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const { userRole } = getUserIdFromToken(req, res);
-
-      if (userRole !== "admin") {
-        return res.status(401).json({
-          code: 401,
-          status: "Unauthorized",
-          message: "You are not authorized to perform this action.",
-        });
-      }
-
-      const productId = req.params.productId;
-
-      const images = req.body.images as Image[];
-
-      const bulkImages = images.map((image) => ({
-        product_id: productId,
-        image_uri: image.image_uri,
-      }));
-
-      const createImages = await ProductImage.bulkCreate<any>(bulkImages);
-
-      res.status(201).json({
-        code: 201,
-        message: "Images added successfully",
-        data: createImages,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: error.message,
-      });
-    }
-  }
-);
-
 //update product
-router.put(
-  "/update/:productId",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const { userRole } = getUserIdFromToken(req, res);
+router.put("/:productId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userRole } = getUserIdFromToken(req, res);
 
-      if (userRole !== "admin") {
-        return res.status(401).json({
-          code: 401,
-          status: "Unauthorized",
-          message: "You are not authorized to perform this action.",
-        });
-      }
-
-      const productId = req.params.productId;
-
-      const updateProduct = await Product.update(req.body, {
-        where: {
-          product_id: productId,
-        },
-      });
-
-      res.status(200).json({
-        code: 200,
-        message: "Product updated successfully",
-        data: updateProduct,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: error.message,
+    if (userRole !== "admin") {
+      return res.status(401).json({
+        code: 401,
+        status: "Unauthorized",
+        message: "You are not authorized to perform this action.",
       });
     }
+
+    const productId = req.params.productId;
+
+    const {
+      product_name,
+      product_price,
+      product_description,
+      sub_category_id,
+      product_gender,
+      images,
+      sizes,
+      materials,
+      cares,
+    } = req.body;
+
+    // Update the product
+    const updatedProduct = await Product.update(
+      {
+        product_name,
+        product_price,
+        product_description,
+        sub_category_id,
+        product_gender,
+      },
+      {
+        where: { product_id: productId },
+      }
+    );
+
+    // Check if the product was updated successfully
+    if (!updatedProduct[0]) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Product not found",
+      });
+    }
+
+    // Delete existing images associated with the product
+    await ProductImage.destroy({ where: { product_id: productId } });
+
+    // Insert new images
+    const bulkImages = images.map((image: any) => ({
+      product_id: productId,
+      image_url: image.image_url,
+    }));
+    await ProductImage.bulkCreate<any>(bulkImages);
+
+    // Delete existing sizes associated with the product
+    await ProductSize.destroy({ where: { product_id: productId } });
+
+    // Insert new sizes
+    const bulkSizes = sizes.map((size: any) => ({
+      product_id: productId,
+      size: size.size,
+      stock: size.stock,
+    }));
+    await ProductSize.bulkCreate<any>(bulkSizes);
+
+    // Update product materials
+    await ProductMaterial.update(
+      {
+        fabric: materials.fabric,
+        transparency: materials.transparency,
+        thickness: materials.thickness,
+        stretchiness: materials.stretchiness,
+      },
+      {
+        where: { product_id: productId },
+      }
+    );
+
+    // Update product cares
+    await ProductCare.update(
+      {
+        washing: cares.washing,
+        bleaching: cares.bleaching,
+        drying: cares.drying,
+        ironing: cares.ironing,
+        dry_clean: cares.dry_clean,
+      },
+      {
+        where: { product_id: productId },
+      }
+    );
+
+    res.status(200).json({
+      code: 200,
+      message: "Product updated successfully",
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
   }
-);
+});
 
 //delete product
 router.delete(
-  "/delete/:productId",
+  "/:productId",
   verifyToken,
   async (req: Request, res: Response) => {
     try {
@@ -246,16 +375,35 @@ router.delete(
 
       const productId = req.params.productId;
 
-      const deleteProduct = await Product.destroy({
-        where: {
-          product_id: productId,
-        },
+      // Delete product
+      const deletedProduct = await Product.destroy({
+        where: { product_id: productId },
       });
+
+      // Check if the product was deleted successfully
+      if (!deletedProduct) {
+        return res.status(404).json({
+          code: 404,
+          status: "Not Found",
+          message: "Product not found",
+        });
+      }
+
+      // Delete associated images
+      await ProductImage.destroy({ where: { product_id: productId } });
+
+      // Delete associated sizes
+      await ProductSize.destroy({ where: { product_id: productId } });
+
+      // Delete associated materials
+      await ProductMaterial.destroy({ where: { product_id: productId } });
+
+      // Delete associated cares
+      await ProductCare.destroy({ where: { product_id: productId } });
 
       res.status(200).json({
         code: 200,
-        message: "Product deleted successfully",
-        data: deleteProduct,
+        message: "Product and associated data deleted successfully",
       });
     } catch (error: any) {
       res.status(500).json({
@@ -274,7 +422,7 @@ router.get("/detail/:productId", async (req: Request, res: Response) => {
 
     const product = await Product.findOne({
       include: [
-        { model: ProductCategory },
+        { model: ProductSubCategory },
         { model: ProductSize },
         { model: ProductImage },
         {
@@ -302,6 +450,8 @@ router.get("/detail/:productId", async (req: Request, res: Response) => {
             },
           ],
         },
+        { model: ProductMaterial },
+        { model: ProductCare },
       ],
       where: {
         product_id: productId,
@@ -333,10 +483,10 @@ router.get("/category/:categoryId", async (req: Request, res: Response) => {
   try {
     const categoryId = req.params.categoryId;
 
-    const category = await ProductCategory.findOne({
-      include: [{ model: Product }],
+    const category = await ProductSubCategory.findOne({
+      include: [{ model: Product, include: [{ model: ProductImage }] }],
       where: {
-        product_category_id: categoryId,
+        product_sub_category_id: categoryId,
       },
     });
 
@@ -377,7 +527,7 @@ router.get("/search", async (req: Request, res: Response) => {
 
     const searchProduct = await Product.findAll({
       include: [
-        { model: ProductCategory },
+        { model: ProductSubCategory },
         { model: ProductImage },
         { model: ProductReview },
       ],
@@ -394,7 +544,7 @@ router.get("/search", async (req: Request, res: Response) => {
             },
           },
           {
-            "$category.category_name$": {
+            "$sub_category.sub_category_name$": {
               [Op.like]: `%${searchKeyword}%`,
             },
           },
