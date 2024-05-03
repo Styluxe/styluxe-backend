@@ -75,8 +75,7 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     // Calculate expiration time
-    const expiresIn = "24h";
-    const expirationTime = Math.floor(Date.now() / 1000) + parseInt(expiresIn);
+    const expiresIn = "30d";
 
     // Create JWT token
     const token = jwt.sign(
@@ -91,7 +90,6 @@ router.post("/login", async (req: Request, res: Response) => {
       message: "Login successful",
       token,
       data: jwt.decode(token),
-      expiresIn: expirationTime,
     });
   } catch (error: any) {
     res
