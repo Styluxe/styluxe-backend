@@ -90,6 +90,7 @@ export class User extends Model<UserInterface> implements UserInterface {
   @HasMany(() => Following)
   declare following: Following[];
 }
+
 // user address model
 @Table({
   timestamps: true,

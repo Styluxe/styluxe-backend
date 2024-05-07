@@ -11,6 +11,7 @@ import UserRoutes from "./routes/user.route";
 import PostRoutes from "./routes/post.route";
 import ProductRoutes from "./routes/product.route";
 import OrderRoutes from "./routes/order.route";
+import { v2 as cloudinary } from "cloudinary";
 
 const app = express();
 
@@ -19,6 +20,12 @@ dotenv.config();
 app.use(json());
 app.use(cors());
 app.use(urlencoded({ extended: true }));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 app.use("/auth", AuthRoutes);
 app.use("/user", UserRoutes);
