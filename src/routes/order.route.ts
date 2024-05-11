@@ -6,9 +6,8 @@ import {
   ShoppingCart,
   CartItem,
   PaymentDetails,
-  ShippingDetails,
 } from "../models/orders";
-import { Product } from "../models/products";
+import { Product, ProductImage } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { UUIDV4 } from "sequelize";
 
@@ -43,8 +42,17 @@ router.post(
       });
 
       if (cartItem) {
-        cartItem.quantity += quantity;
-        await cartItem.save();
+        if (cartItem.size === size) {
+          cartItem.quantity += quantity;
+          await cartItem.save();
+        } else {
+          cartItem = await CartItem.create<any>({
+            cart_id: shoppingCart.cart_id,
+            product_id: product_id,
+            quantity: quantity,
+            size: size,
+          });
+        }
       } else {
         cartItem = await CartItem.create<any>({
           cart_id: shoppingCart.cart_id,
@@ -66,6 +74,50 @@ router.post(
   }
 );
 
+//update cart quantity
+router.put(
+  "/update-quantity",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const { cartItemId, quantity } = req.body;
+
+      const cartItem = await CartItem.findOne({
+        where: { cart_item_id: cartItemId },
+      });
+
+      const shoppingCart = await ShoppingCart.findOne<any>({
+        where: { user_id: userId },
+      });
+
+      if (!cartItem) {
+        return res
+          .status(404)
+          .json({ code: 404, error: "Cart item not found" });
+      }
+
+      if (cartItem.cart_id !== shoppingCart.cart_id) {
+        return res.status(403).json({
+          code: 403,
+          error: "You are not authorized to update this cart item",
+        });
+      }
+
+      cartItem.quantity = quantity;
+
+      await cartItem.save();
+
+      res.status(200).json({ code: 200, data: cartItem });
+
+      // console.log("Cart item updated successfully");
+    } catch (error) {
+      console.error("Error updating cart quantity:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  }
+);
+
 //feature view cart
 router.get("/view-cart", verifyToken, async (req: Request, res: Response) => {
   try {
@@ -73,14 +125,13 @@ router.get("/view-cart", verifyToken, async (req: Request, res: Response) => {
 
     const shoppingCart = await ShoppingCart.findOne<any>({
       where: { user_id: userId },
-      include: [{ model: CartItem, include: [{ model: Product }] }],
+      include: [
+        {
+          model: CartItem,
+          include: [{ model: Product, include: [{ model: ProductImage }] }],
+        },
+      ],
     });
-
-    let total = 0;
-    for (const item of shoppingCart.cart_items) {
-      total += item.product.product_price * item.quantity;
-    }
-    await shoppingCart.update({ total: total });
 
     if (!shoppingCart) {
       return res.status(404).json({ code: 404, error: "Cart is empty" });
@@ -120,16 +171,6 @@ router.delete(
 
       await cartItem.destroy();
 
-      let total = 0;
-      const cartItems = await CartItem.findAll({
-        where: { cart_id: shoppingCart.cart_id },
-        include: [{ model: Product }],
-      });
-      for (const item of cartItems) {
-        total += item.product.product_price * item.quantity;
-      }
-      await shoppingCart.update({ total: total });
-
       res.status(200).json({
         code: 200,
         message: "Product removed from cart successfully",
@@ -148,12 +189,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { userId } = getUserIdFromToken(req, res);
-      const {
-        payment_provider,
-        payment_type_id,
-        address_id,
-        expedition_service,
-      } = req.body;
+      const { payment_provider, payment_type_id } = req.body;
 
       const shoppingCart = await ShoppingCart.findOne<any>({
         where: { user_id: userId },
@@ -175,27 +211,14 @@ router.post(
       const paymentDetails = await PaymentDetails.create<any>({
         amount: total,
         provider: payment_provider,
-        payment_status: "Pending",
         payment_date: null,
         payment_type_id: payment_type_id,
-      });
-
-      // Create shipping details for the order
-      const shippingDetails = await ShippingDetails.create<any>({
-        address_id: address_id,
-        shipping_date: new Date(),
-        expedition_service: expedition_service,
-        delivery_date: null,
-        courier_name: "Kurir Styluxe",
-        tracking_number: UUIDV4,
-        shipping_status: "Pending",
       });
 
       // Create a new order
       const order = await Order.create<any>({
         user_id: userId,
         payment_id: paymentDetails.payment_details_id,
-        shipping_id: shippingDetails.shipping_id,
         total: total,
         status: "Pending", // Initial order status
       });
@@ -250,7 +273,6 @@ router.get(
         include: [
           { model: OrderItem, include: [{ model: Product }] },
           { model: PaymentDetails },
-          { model: ShippingDetails },
         ],
       });
 
@@ -280,7 +302,6 @@ router.put(
         include: [
           { model: OrderItem, include: [{ model: Product }] },
           { model: PaymentDetails },
-          { model: ShippingDetails },
         ],
       });
 

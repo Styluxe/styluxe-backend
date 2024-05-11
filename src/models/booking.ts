@@ -23,6 +23,12 @@ export class StylistBooking extends Model<StylistBooking> {
   })
   declare booking_id: number;
 
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  declare booking_number: string;
+
   @ForeignKey(() => Stylist)
   @Column({
     type: DataType.INTEGER,
@@ -51,8 +57,8 @@ export class StylistBooking extends Model<StylistBooking> {
 }
 
 @Table({
-  timestamps: true,
   tableName: "booking_details",
+  timestamps: false,
 })
 export class BookingDetails extends Model<BookingDetails> {
   @Column({

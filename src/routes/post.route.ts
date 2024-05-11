@@ -8,7 +8,7 @@ import {
   Reaction,
   Bookmark,
 } from "../models/posts";
-import { Follower, Following, User } from "../models/users";
+import { User } from "../models/users";
 const router = express.Router();
 
 //create category
@@ -117,12 +117,12 @@ router.post(
       const { userId } = getUserIdFromToken(req, res);
       const { category_id, title, content, images } = req.body;
 
-      const createPost = await Post.create({
+      const createPost = await Post.create<any>({
         author_id: userId,
         category_id: category_id,
         title: title,
         content: content,
-      } as Post);
+      });
 
       if (images && images.length > 4) {
         return res.status(400).json({
@@ -194,7 +194,6 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
 
     const userProfile = await User.findOne({
       where: { user_id: userId },
-      include: [{ model: Follower }, { model: Following }],
     });
 
     const userPosts = await Post.findAll({

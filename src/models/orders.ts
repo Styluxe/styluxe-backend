@@ -6,8 +6,9 @@ import {
   ForeignKey,
   BelongsTo,
   HasMany,
+  HasOne,
 } from "sequelize-typescript";
-import { User, UserAddress, PaymentType } from "./users";
+import { User, UserAddress } from "./users";
 import { Product } from "./products";
 
 @Table({
@@ -26,7 +27,7 @@ export class ShoppingCart extends Model<ShoppingCart> {
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare user_id: number;
 
@@ -59,14 +60,14 @@ export class CartItem extends Model<CartItem> {
   @ForeignKey(() => ShoppingCart)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare cart_id: number;
 
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_id: number;
 
@@ -78,76 +79,15 @@ export class CartItem extends Model<CartItem> {
 
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare quantity: number;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare size: string;
-}
-
-@Table({
-  timestamps: true,
-  tableName: "wishlist",
-})
-export class Wishlist extends Model<Wishlist> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare wishlist_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare user_id: number;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @HasMany(() => WishlistItem)
-  declare wishlist_items: WishlistItem[];
-}
-
-@Table({
-  timestamps: true,
-  tableName: "wishlist_item",
-})
-export class WishlistItem extends Model<WishlistItem> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare wishlist_item_id: number;
-
-  @ForeignKey(() => Wishlist)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare wishlist_id: number;
-
-  @ForeignKey(() => Product)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_id: number;
-
-  @BelongsTo(() => Wishlist)
-  declare wishlist: Wishlist;
-
-  @BelongsTo(() => Product)
-  declare product: Product;
 }
 
 @Table({
@@ -165,7 +105,7 @@ export class PaymentDetails extends Model<PaymentDetails> {
 
   @Column({
     type: DataType.DECIMAL(10, 2),
-    allowNull: true,
+    allowNull: false,
   })
   declare amount: number;
 
@@ -176,10 +116,17 @@ export class PaymentDetails extends Model<PaymentDetails> {
   declare provider: string;
 
   @Column({
+    type: DataType.ENUM("pending", "paid", "failed"),
+    allowNull: false,
+    defaultValue: "pending",
+  })
+  declare payment_status: string;
+
+  @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  declare payment_status: string;
+  declare payment_receipt_url: string;
 
   @Column({
     type: DataType.DATE,
@@ -187,76 +134,8 @@ export class PaymentDetails extends Model<PaymentDetails> {
   })
   declare payment_date: Date;
 
-  @ForeignKey(() => PaymentType)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare payment_type_id: number;
-
-  @BelongsTo(() => PaymentType)
-  declare payment_type: PaymentType;
-}
-
-// Shipping Details Model
-@Table({
-  timestamps: true,
-  tableName: "shipping_details",
-})
-export class ShippingDetails extends Model<ShippingDetails> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare shipping_id: number;
-
-  @ForeignKey(() => UserAddress)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare address_id: number;
-
-  @BelongsTo(() => UserAddress)
-  declare user_address: UserAddress;
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: true,
-  })
-  declare shipping_date: Date;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare expedition_service: string;
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: true,
-  })
-  declare delivery_date: Date;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare courier_name: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare tracking_number: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare shipping_status: string;
+  @HasOne(() => Order)
+  declare order: any;
 }
 
 @Table({
@@ -272,12 +151,21 @@ export class Order extends Model<Order> {
   })
   declare order_id: number;
 
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  declare order_number: string;
+
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
   declare user_id: number;
+
+  @BelongsTo(() => User)
+  declare user: User;
 
   @ForeignKey(() => PaymentDetails)
   @Column({
@@ -286,21 +174,18 @@ export class Order extends Model<Order> {
   })
   declare payment_id: number;
 
-  @ForeignKey(() => ShippingDetails)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare shipping_id: number;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
   @BelongsTo(() => PaymentDetails)
   declare payment_details: PaymentDetails;
 
-  @BelongsTo(() => ShippingDetails)
-  declare shipping_details: ShippingDetails;
+  @ForeignKey(() => UserAddress)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare address_id: number;
+
+  @BelongsTo(() => UserAddress)
+  declare user_address: UserAddress;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -309,18 +194,18 @@ export class Order extends Model<Order> {
   declare total: number;
 
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
+    type: DataType.ENUM("pending", "processing", "shipped", "delivered"),
+    allowNull: false,
   })
-  declare status: string;
+  declare order_status: string;
 
   @HasMany(() => OrderItem)
   declare order_items: OrderItem[];
 }
 
 @Table({
-  timestamps: true,
   tableName: "order_item",
+  timestamps: false,
 })
 export class OrderItem extends Model<OrderItem> {
   @Column({

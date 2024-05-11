@@ -1,12 +1,6 @@
 import { Sequelize } from "sequelize-typescript";
 import dotenv from "dotenv";
-import {
-  User,
-  UserAddress,
-  PaymentType,
-  Follower,
-  Following,
-} from "../models/users";
+import { User, UserAddress } from "../models/users";
 import {
   Bookmark,
   Image,
@@ -19,12 +13,8 @@ import {
   Product,
   ProductCare,
   ProductCategory,
-  ProductDiscussion,
-  ProductDiscussionReply,
   ProductImage,
   ProductMaterial,
-  ProductReview,
-  ProductReviewImage,
   ProductSize,
   ProductSubCategory,
 } from "../models/products";
@@ -33,13 +23,16 @@ import {
   Order,
   OrderItem,
   PaymentDetails,
-  ShippingDetails,
   ShoppingCart,
-  Wishlist,
-  WishlistItem,
 } from "../models/orders";
-import { Stylist, StylistReview, StylistSchedule } from "../models/stylists";
+import {
+  Stylist,
+  StylistReview,
+  StylistSchedule,
+  StylistScheduleTime,
+} from "../models/stylists";
 import { StylistBooking, BookingDetails } from "../models/booking";
+import { LatestProduct } from "../models/featured";
 
 dotenv.config();
 
@@ -52,9 +45,6 @@ const connection = new Sequelize({
   models: [
     User,
     UserAddress,
-    PaymentType,
-    Follower,
-    Following,
     Post,
     PostCategory,
     PostComment,
@@ -67,24 +57,19 @@ const connection = new Sequelize({
     ProductCare,
     ProductMaterial,
     ProductImage,
-    ProductReview,
-    ProductReviewImage,
     ProductSize,
-    ProductDiscussion,
-    ProductDiscussionReply,
     ShoppingCart,
     CartItem,
-    Wishlist,
-    WishlistItem,
     PaymentDetails,
-    ShippingDetails,
     Order,
     OrderItem,
     Stylist,
     StylistReview,
     StylistSchedule,
+    StylistScheduleTime,
     StylistBooking,
     BookingDetails,
+    LatestProduct,
   ],
   logging: false,
 });

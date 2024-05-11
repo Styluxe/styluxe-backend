@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { Follower, Following, User, UserAddress } from "../models/users";
+import { User, UserAddress } from "../models/users";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 
 const router = express.Router();
@@ -141,7 +141,7 @@ router.post(
         name,
       } = req.body;
 
-      const addAddress = await UserAddress.create({
+      const addAddress = await UserAddress.create<any>({
         user_id: userId,
         country,
         city,
@@ -151,7 +151,7 @@ router.post(
         receiver_name,
         address,
         name,
-      } as UserAddress);
+      });
 
       res.status(201).json({
         code: 201,
@@ -204,7 +204,7 @@ router.put(
     try {
       const { userId } = getUserIdFromToken(req, res);
 
-      const address_user = await UserAddress.findOne({
+      const address_user = await UserAddress.findOne<any>({
         where: {
           user_id: userId,
           address_id: address_id,
@@ -260,7 +260,7 @@ router.delete(
     try {
       const { userId } = getUserIdFromToken(req, res);
 
-      const address_user = await UserAddress.findOne({
+      const address_user = await UserAddress.findOne<any>({
         where: {
           user_id: userId,
           address_id: address_id,
@@ -300,166 +300,6 @@ router.delete(
         message: "Internal server error",
         error: error.message,
       });
-    }
-  }
-);
-
-//following other user
-router.post(
-  "/follow/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const { userId } = getUserIdFromToken(req, res); //auth user
-
-    const followerId = parseInt(req.params.user_id); //user to follow
-
-    try {
-      const existingFollow = await Following.findOne({
-        where: {
-          user_id: followerId,
-          following_user_id: userId,
-        },
-      });
-
-      if (existingFollow) {
-        return res
-          .status(400)
-          .json({ message: "You are already following this user" });
-      }
-
-      const followUser = await Following.create({
-        user_id: followerId,
-        following_user_id: userId,
-      } as Following);
-
-      const existingFollower = await Follower.findOne({
-        where: {
-          user_id: userId,
-          follower_user_id: followerId,
-        },
-      });
-
-      if (!existingFollower) {
-        await Follower.create({
-          user_id: userId,
-          follower_user_id: followerId,
-        } as Follower);
-      }
-
-      res
-        .status(201)
-        .json({ code: 201, message: "User followed successfully", followUser });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-//unfollow other user
-router.delete(
-  "/unfollow/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const { userId } = getUserIdFromToken(req, res);
-    const followingId = parseInt(req.params.user_id);
-
-    try {
-      const unfollowUser = await Following.destroy({
-        where: {
-          user_id: followingId,
-          following_user_id: userId,
-        },
-      });
-
-      await Follower.destroy({
-        where: {
-          user_id: userId,
-          follower_user_id: followingId,
-        },
-      });
-
-      res.status(200).json({
-        code: 200,
-        message: "User Unfollowed succesfully",
-        unfollowUser,
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Get followers of the authenticated user
-router.get("/followers", verifyToken, async (req: Request, res: Response) => {
-  const { userId } = getUserIdFromToken(req, res);
-
-  try {
-    const followers = await Follower.findAll({
-      where: { user_id: userId },
-      include: [{ model: User, as: "followerUser" }], // Include the follower details
-    });
-
-    if (followers.length === 0)
-      return res.status(404).json({ message: "No followers found" });
-
-    res.status(200).json({ code: 200, followers });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Get following of the authenticated user
-router.get("/following", verifyToken, async (req: Request, res: Response) => {
-  const { userId } = getUserIdFromToken(req, res);
-  try {
-    const following = await Following.findAll({
-      where: { user_id: userId },
-      include: [{ model: User, as: "followingUser" }],
-    });
-    res.status(200).json({ code: 200, following });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Get followers of another user
-router.get(
-  "/followers/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const userId = parseInt(req.params.user_id);
-    try {
-      const followers = await Follower.findAll({
-        where: { user_id: userId },
-        include: [{ model: User, as: "followerUser" }],
-      });
-      res.status(200).json({ code: 200, followers });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Get following of another user
-router.get(
-  "/following/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const userId = req.params.user_id;
-    try {
-      const following = await Following.findAll({
-        where: { user_id: userId },
-        include: [{ model: User, as: "followingUser" }],
-      });
-      res.status(200).json({ code: 200, following });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
     }
   }
 );

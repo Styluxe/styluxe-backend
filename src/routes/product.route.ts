@@ -3,11 +3,7 @@ import express, { Request, Response } from "express";
 import {
   Product,
   ProductCategory,
-  ProductReview,
   ProductImage,
-  ProductReviewImage,
-  ProductDiscussion,
-  ProductDiscussionReply,
   ProductSize,
   ProductSubCategory,
   ProductMaterial,
@@ -425,31 +421,6 @@ router.get("/detail/:productId", async (req: Request, res: Response) => {
         { model: ProductSubCategory },
         { model: ProductSize },
         { model: ProductImage },
-        {
-          model: ProductReview,
-          include: [
-            {
-              model: User,
-              attributes: [
-                "first_name",
-                "last_name",
-                "email",
-                "profile_picture",
-              ],
-            },
-            {
-              model: ProductReviewImage,
-            },
-          ],
-        },
-        {
-          model: ProductDiscussion,
-          include: [
-            {
-              model: ProductDiscussionReply,
-            },
-          ],
-        },
         { model: ProductMaterial },
         { model: ProductCare },
       ],
@@ -526,11 +497,7 @@ router.get("/search", async (req: Request, res: Response) => {
     const searchKeyword = search.replace(/_/g, " ");
 
     const searchProduct = await Product.findAll({
-      include: [
-        { model: ProductSubCategory },
-        { model: ProductImage },
-        { model: ProductReview },
-      ],
+      include: [{ model: ProductSubCategory }, { model: ProductImage }],
       where: {
         [Op.or]: [
           {
@@ -566,35 +533,5 @@ router.get("/search", async (req: Request, res: Response) => {
     });
   }
 });
-
-//create product review
-router.post(
-  "/review/:productId",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const { userId } = getUserIdFromToken(req, res);
-      const productId = req.params.productId;
-
-      const review = await ProductReview.create<any>({
-        product_id: productId,
-        user_id: userId,
-        ...req.body,
-      });
-
-      res.status(201).json({
-        code: 201,
-        message: "Review added successfully",
-        data: review,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: error.message,
-      });
-    }
-  }
-);
 
 export default router;

@@ -8,10 +8,7 @@ import {
   HasMany,
 } from "sequelize-typescript";
 import {
-  PaymentTypeInterface,
   UserInterface,
-  followersInterface,
-  followingInterface,
   userAddressInterface,
 } from "../interface/users.interface";
 
@@ -80,15 +77,6 @@ export class User extends Model<UserInterface> implements UserInterface {
 
   @HasMany(() => UserAddress)
   declare addresses: UserAddress[];
-
-  @HasMany(() => PaymentType)
-  declare payment: PaymentType[];
-
-  @HasMany(() => Follower)
-  declare followers: Follower[];
-
-  @HasMany(() => Following)
-  declare following: Following[];
 }
 
 // user address model
@@ -111,9 +99,9 @@ export class UserAddress
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare user_id: number | null;
+  declare user_id: number;
 
   @BelongsTo(() => User)
   declare user: User;
@@ -172,130 +160,4 @@ export class UserAddress
     defaultValue: false,
   })
   declare is_primary: boolean | null;
-}
-
-// payment type model
-@Table({
-  timestamps: true,
-  tableName: "payment_type",
-})
-export class PaymentType
-  extends Model<PaymentTypeInterface>
-  implements PaymentTypeInterface
-{
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare payment_type_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare user_id: number | null;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare payment_name: string | null;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare account_no: number | null;
-
-  @Column({
-    type: DataType.DATEONLY,
-    allowNull: true,
-  })
-  declare expiry: Date | null;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare provider: string | null;
-}
-
-// followers
-@Table({
-  timestamps: true,
-  tableName: "followers",
-})
-export class Follower
-  extends Model<followersInterface>
-  implements followersInterface
-{
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare follower_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-  })
-  declare user_id: number | null;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-  })
-  declare follower_user_id: number | null;
-
-  @BelongsTo(() => User, { foreignKey: "follower_user_id" })
-  declare followerUser: User;
-}
-
-// following
-@Table({
-  timestamps: true,
-  tableName: "followings",
-})
-export class Following
-  extends Model<followingInterface>
-  implements followingInterface
-{
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare following_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-  })
-  declare user_id: number | null;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-  })
-  declare following_user_id: number | null;
-
-  @BelongsTo(() => User, { foreignKey: "following_user_id" })
-  declare followingUser: User;
 }
