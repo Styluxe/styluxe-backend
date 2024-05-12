@@ -10,10 +10,11 @@ import {
 import { Product, ProductImage } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { UUIDV4 } from "sequelize";
+import { UserAddress } from "../models/users";
 
 const router = express.Router();
 
-//feature add to cart
+// Feature: Add to Cart
 router.post(
   "/add-to-cart",
   verifyToken,
@@ -22,18 +23,24 @@ router.post(
       const { userId } = getUserIdFromToken(req, res);
       const { product_id, quantity, size } = req.body;
 
+      // Find user's shopping cart
       let shoppingCart = await ShoppingCart.findOne<any>({
         where: { user_id: userId },
         include: [{ model: CartItem, include: [{ model: Product }] }],
       });
 
+      // Initialize total amount of products
+      let total = 0;
+
       if (!shoppingCart) {
+        // Create new shopping cart if not found
         shoppingCart = await ShoppingCart.create<any>({
           user_id: userId,
-          total: 0,
+          total: total,
         });
       }
 
+      // Check if product already exists in cart
       let cartItem = await CartItem.findOne({
         where: {
           cart_id: shoppingCart.cart_id,
@@ -42,10 +49,12 @@ router.post(
       });
 
       if (cartItem) {
+        // Update quantity if product exists
         if (cartItem.size === size) {
           cartItem.quantity += quantity;
           await cartItem.save();
         } else {
+          // Create new cart item if product size differs
           cartItem = await CartItem.create<any>({
             cart_id: shoppingCart.cart_id,
             product_id: product_id,
@@ -54,12 +63,20 @@ router.post(
           });
         }
       } else {
+        // Create new cart item if product doesn't exist
         cartItem = await CartItem.create<any>({
           cart_id: shoppingCart.cart_id,
           product_id: product_id,
           quantity: quantity,
           size: size,
         });
+      }
+
+      // Calculate total price
+      if (shoppingCart) {
+        for (const item of shoppingCart.cart_items) {
+          total += item.quantity * item.product.product_price;
+        }
       }
 
       res.status(200).json({
@@ -71,7 +88,7 @@ router.post(
       console.error("Error adding product to cart:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
 );
 
 //update cart quantity
@@ -115,7 +132,7 @@ router.put(
       console.error("Error updating cart quantity:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
 );
 
 //feature view cart
@@ -179,7 +196,54 @@ router.delete(
       console.error("Error removing product from cart:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
+);
+
+//view payment summary
+router.get(
+  "/payment-summary",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      const address = await UserAddress.findOne<any>({
+        where: { user_id: userId, is_primary: true },
+      });
+
+      const shoppingCart = await ShoppingCart.findOne<any>({
+        where: { user_id: userId },
+      });
+
+      if (!shoppingCart) {
+        return res.status(404).json({ code: 404, error: "Cart is empty" });
+      }
+
+      const cartItems = await CartItem.findAll({
+        where: { cart_id: shoppingCart.cart_id },
+        include: [{ model: Product, include: [{ model: ProductImage }] }],
+      });
+
+      //count total price
+      let total = 0;
+
+      for (const item of cartItems) {
+        total += item.quantity * item.product.product_price;
+      }
+
+      res.status(200).json({
+        code: 200,
+        data: {
+          total_price: total,
+          address: address || null,
+          cartItems: cartItems,
+        },
+      });
+    } catch (error) {
+      console.error("Error viewing payment summary:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  },
 );
 
 //feature create order from shopping cart and calculate total
@@ -189,7 +253,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { userId } = getUserIdFromToken(req, res);
-      const { payment_provider, payment_type_id } = req.body;
+      const { payment_provider, address_id } = req.body;
 
       const shoppingCart = await ShoppingCart.findOne<any>({
         where: { user_id: userId },
@@ -197,6 +261,7 @@ router.post(
 
       const cartItems = await CartItem.findAll({
         where: { cart_id: shoppingCart.cart_id },
+        include: [{ model: Product }],
       });
 
       if (!shoppingCart || cartItems.length === 0) {
@@ -208,42 +273,54 @@ router.post(
         total += cartItem.quantity * cartItem.product.product_price;
       }
 
+      const randomThreeDigit = Math.floor(Math.random() * 1000);
+      const transferAmount = total + randomThreeDigit;
+
+      const orderCreationDate = new Date();
+      const paymentDeadline = new Date(
+        orderCreationDate.getTime() + 24 * 60 * 60 * 1000,
+      );
+
       const paymentDetails = await PaymentDetails.create<any>({
         amount: total,
+        transfer_amount: transferAmount,
         provider: payment_provider,
-        payment_date: null,
-        payment_type_id: payment_type_id,
+        payment_deadline: paymentDeadline,
+      }).catch((error) => {
+        console.error("Error creating payment details:", error);
+        res
+          .status(500)
+          .json({ code: 500, error: "Internal Server Error (payment)" });
       });
 
-      // Create a new order
       const order = await Order.create<any>({
         user_id: userId,
+        order_number: "STLXE" + Math.floor(Math.random() * 90000) + 10000,
         payment_id: paymentDetails.payment_details_id,
+        address_id: address_id,
         total: total,
-        status: "Pending", // Initial order status
+        order_status: "pending",
+      }).catch((error) => {
+        console.error("Error creating order:", error);
+        res
+          .status(500)
+          .json({ code: 500, error: "Internal Server Error (order)" });
       });
 
-      // Create order items for each cart item
       for (const cartItem of cartItems) {
         await OrderItem.create<any>({
           order_id: order.order_id,
           product_id: cartItem.product_id,
           quantity: cartItem.quantity,
+          size: cartItem.size,
+        }).catch((error) => {
+          console.error("Error creating order item:", error);
+          res
+            .status(500)
+            .json({ code: 500, error: "Internal Server Error (order item)" });
         });
       }
 
-      // Update product stock and create order items for each cart item
-      for (const cartItem of cartItems) {
-        // Update product stock
-        const product = await Product.findByPk(cartItem.product_id);
-
-        // Create order item
-        await OrderItem.create<any>({
-          order_id: order.order_id,
-          product_id: cartItem.product_id,
-          quantity: cartItem.quantity,
-        });
-      }
       // Clear the shopping cart
       await CartItem.destroy({ where: { cart_id: shoppingCart.cart_id } });
 
@@ -256,7 +333,120 @@ router.post(
       console.error("Error creating order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
+  },
+);
+
+//update payment status and order status
+router.put(
+  "/order-status/:orderId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+      const { userId } = getUserIdFromToken(req, res);
+
+      console.log("ordser", orderId);
+
+      const order = await Order.findOne<any>({
+        where: { order_id: orderId },
+        include: [{ model: PaymentDetails }],
+      });
+
+      if (!order) {
+        return res.status(404).json({ code: 404, error: "Order not found" });
+      }
+
+      if (order.user_id !== userId) {
+        return res.status(403).json({
+          code: 403,
+          error: "You are not authorized to update this order",
+        });
+      }
+
+      const { payment_status, order_status } = req.body;
+
+      // Find the associated payment details
+      const payment = await PaymentDetails.findOne<any>({
+        where: { payment_details_id: order.payment_id },
+      });
+
+      // Update payment status if provided
+      if (req.body.payment_status) {
+        payment.payment_status = payment_status;
+        await payment.save();
+      }
+
+      // Update order status if provided
+      if (req.body.order_status) {
+        order.order_status = order_status;
+        await order.save();
+      }
+
+      res
+        .status(200)
+        .json({ code: 200, message: "Order updated successfully" });
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  },
+);
+
+//view all orders
+router.get("/view-orders", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+
+    const orders = await Order.findAll<any>({
+      where: { user_id: userId },
+      include: [
+        {
+          model: OrderItem,
+          include: [{ model: Product, include: [{ model: ProductImage }] }],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({ code: 200, data: orders });
+  } catch (error) {
+    console.error("Error viewing orders:", error);
+    res.status(500).json({ code: 500, error: "Internal Server Error" });
   }
+});
+
+//delete order
+router.delete(
+  "/delete-order/:orderId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+      const { userId } = getUserIdFromToken(req, res);
+
+      const order = await Order.findOne<any>({
+        where: { order_id: orderId, user_id: userId },
+      });
+
+      if (!order) {
+        return res.status(404).json({ code: 404, error: "Order not found" });
+      }
+
+      await OrderItem.destroy({ where: { order_id: orderId } });
+      await PaymentDetails.destroy({
+        where: { payment_details_id: order.payment_id },
+      });
+
+      await order.destroy();
+
+      res
+        .status(200)
+        .json({ code: 200, message: "Order deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  },
 );
 
 //view single order
@@ -271,8 +461,12 @@ router.get(
       const order = await Order.findOne<any>({
         where: { order_id: orderId, user_id: userId },
         include: [
-          { model: OrderItem, include: [{ model: Product }] },
+          {
+            model: OrderItem,
+            include: [{ model: Product, include: [{ model: ProductImage }] }],
+          },
           { model: PaymentDetails },
+          { model: UserAddress },
         ],
       });
 
@@ -285,7 +479,7 @@ router.get(
       console.error("Error viewing order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
 );
 
 router.put(
@@ -332,7 +526,7 @@ router.put(
       console.error("Error cancelling order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
 );
 
 export default router;

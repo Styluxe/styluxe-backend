@@ -116,6 +116,18 @@ export class UserAddress
     type: DataType.STRING,
     allowNull: true,
   })
+  declare province: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare district: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   declare city: string | null;
 
   @Column({

@@ -113,6 +113,12 @@ export class PaymentDetails extends Model<PaymentDetails> {
     type: DataType.STRING,
     allowNull: true,
   })
+  declare transfer_amount: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
   declare provider: string;
 
   @Column({
@@ -127,6 +133,12 @@ export class PaymentDetails extends Model<PaymentDetails> {
     allowNull: true,
   })
   declare payment_receipt_url: string;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  declare payment_deadline: Date;
 
   @Column({
     type: DataType.DATE,
@@ -194,7 +206,14 @@ export class Order extends Model<Order> {
   declare total: number;
 
   @Column({
-    type: DataType.ENUM("pending", "processing", "shipped", "delivered"),
+    type: DataType.ENUM(
+      "pending",
+      "waiting for confirmation",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ),
     allowNull: false,
   })
   declare order_status: string;

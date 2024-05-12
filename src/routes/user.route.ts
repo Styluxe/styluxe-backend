@@ -133,6 +133,8 @@ router.post(
       const {
         country,
         city,
+        province,
+        district,
         postal_code,
         telephone,
         mobile,
@@ -141,16 +143,23 @@ router.post(
         name,
       } = req.body;
 
+      const existingAddress = await UserAddress.findOne({
+        where: { user_id: userId },
+      });
+
       const addAddress = await UserAddress.create<any>({
         user_id: userId,
         country,
         city,
         postal_code,
+        province,
+        district,
         telephone,
         mobile,
         receiver_name,
         address,
         name,
+        is_primary: existingAddress ? false : true,
       });
 
       res.status(201).json({
@@ -170,6 +179,50 @@ router.post(
   }
 );
 
+router.put(
+  "/address-primary/:address_id",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const addressId = req.params.address_id;
+
+      // Find the current primary address
+      const currentPrimaryAddress = await UserAddress.findOne<any>({
+        where: { user_id: userId, is_primary: true },
+      });
+
+      // If there's a current primary address, set it to false
+      if (currentPrimaryAddress) {
+        await UserAddress.update(
+          { is_primary: false },
+          { where: { address_id: currentPrimaryAddress.address_id } }
+        );
+      }
+
+      // Set the new address as primary
+      const updatedAddress = await UserAddress.update(
+        { is_primary: true },
+        { where: { address_id: addressId, user_id: userId } }
+      );
+
+      res.status(200).json({
+        code: 200,
+        status: "success",
+        message: "Address set as primary successfully",
+        data: updatedAddress,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
 // Get user address
 router.get("/address", verifyToken, async (req: Request, res: Response) => {
   try {
@@ -177,6 +230,7 @@ router.get("/address", verifyToken, async (req: Request, res: Response) => {
 
     const address = await UserAddress.findAll({
       where: { user_id: userId },
+      order: [["is_primary", "DESC"]],
     });
 
     res.status(200).json({
