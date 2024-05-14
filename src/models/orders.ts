@@ -10,6 +10,7 @@ import {
 } from "sequelize-typescript";
 import { User, UserAddress } from "./users";
 import { Product } from "./products";
+import { BookingDetails } from "./booking";
 
 @Table({
   timestamps: true,
@@ -148,6 +149,9 @@ export class PaymentDetails extends Model<PaymentDetails> {
 
   @HasOne(() => Order)
   declare order: any;
+
+  @HasOne(() => BookingDetails)
+  declare booking_details: BookingDetails;
 }
 
 @Table({
@@ -212,6 +216,9 @@ export class Order extends Model<Order> {
       "processing",
       "shipped",
       "delivered",
+      "accepted",
+      "rejected",
+      "done",
       "cancelled",
     ),
     allowNull: false,

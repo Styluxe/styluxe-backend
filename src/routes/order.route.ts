@@ -151,7 +151,11 @@ router.get("/view-cart", verifyToken, async (req: Request, res: Response) => {
     });
 
     if (!shoppingCart) {
-      return res.status(404).json({ code: 404, error: "Cart is empty" });
+      const newShoppingCart = await ShoppingCart.create<any>({
+        user_id: userId,
+      });
+
+      res.status(200).json({ code: 200, data: newShoppingCart });
     }
 
     res.status(200).json({ code: 200, data: shoppingCart });

@@ -27,12 +27,14 @@ import {
 } from "../models/orders";
 import {
   Stylist,
+  StylistImage,
   StylistReview,
   StylistSchedule,
   StylistScheduleTime,
 } from "../models/stylists";
 import { StylistBooking, BookingDetails } from "../models/booking";
 import { LatestProduct } from "../models/featured";
+import { Conversation, Message, Participant } from "../models/conversation";
 
 dotenv.config();
 
@@ -64,12 +66,16 @@ const connection = new Sequelize({
     Order,
     OrderItem,
     Stylist,
+    StylistImage,
     StylistReview,
     StylistSchedule,
     StylistScheduleTime,
     StylistBooking,
     BookingDetails,
     LatestProduct,
+    Conversation,
+    Participant,
+    Message,
   ],
   logging: false,
 });

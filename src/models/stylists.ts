@@ -33,6 +33,12 @@ export class Stylist extends Model<Stylist> {
   declare user: User;
 
   @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare brand_name: string;
+
+  @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
@@ -75,6 +81,39 @@ export class Stylist extends Model<Stylist> {
 
   @HasMany(() => StylistReview)
   declare reviews: StylistReview[];
+
+  @HasMany(() => StylistImage)
+  declare images: StylistImage[];
+}
+
+@Table({
+  tableName: "stylist_images",
+  timestamps: false,
+})
+export class StylistImage extends Model<StylistImage> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare stylist_image_id: number;
+
+  @ForeignKey(() => Stylist)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare stylist_id: number;
+
+  @BelongsTo(() => Stylist)
+  declare stylist: Stylist;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  declare image_url: string;
 }
 
 @Table({

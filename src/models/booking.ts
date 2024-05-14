@@ -80,6 +80,12 @@ export class BookingDetails extends Model<BookingDetails> {
   declare stylist_booking: StylistBooking;
 
   @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare booking_number: string;
+
+  @Column({
     type: DataType.TIME,
     allowNull: true,
   })
@@ -90,22 +96,6 @@ export class BookingDetails extends Model<BookingDetails> {
     allowNull: true,
   })
   declare booking_date: Date;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare booking_type: string;
-
-  @ForeignKey(() => UserAddress)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare address_id: number;
-
-  @BelongsTo(() => UserAddress)
-  declare user_address: UserAddress;
 
   @ForeignKey(() => PaymentDetails)
   @Column({
