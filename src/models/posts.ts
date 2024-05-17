@@ -36,9 +36,9 @@ export class PostCategory
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
-  declare category_name: string | null;
+  declare category_name: string;
 
   @HasMany(() => Post)
   declare posts: Post[];
@@ -61,16 +61,16 @@ export class Post extends Model<PostInterface> implements PostInterface {
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare author_id: number | null;
+  declare author_id: number;
 
   @ForeignKey(() => PostCategory)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare category_id: number | null;
+  declare category_id: number;
 
   @BelongsTo(() => User)
   declare author: User;
@@ -120,16 +120,16 @@ export class Reaction
   @ForeignKey(() => Post)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare post_id: number | null;
+  declare post_id: number;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare user_id: number | null;
+  declare user_id: number;
 
   @BelongsTo(() => Post)
   declare post: Post;
@@ -139,9 +139,9 @@ export class Reaction
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
-  declare reaction: string | null;
+  declare reaction: string;
 }
 
 // Post Comment Model
@@ -164,16 +164,16 @@ export class PostComment
   @ForeignKey(() => Post)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare post_id: number | null;
+  declare post_id: number;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare user_id: number | null;
+  declare user_id: number;
 
   @BelongsTo(() => Post)
   declare post: Post;
@@ -183,9 +183,9 @@ export class PostComment
 
   @Column({
     type: DataType.TEXT,
-    allowNull: true,
+    allowNull: false,
   })
-  declare content: string | null;
+  declare content: string;
 }
 
 @Table({
@@ -207,15 +207,15 @@ export class Image
   @ForeignKey(() => Post)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare post_id: number | null;
+  declare post_id: number;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
-  declare image_uri: string | null;
+  declare image_uri: string;
 
   @BelongsTo(() => Post)
   declare post: Post;
@@ -241,16 +241,16 @@ export class Bookmark
   @ForeignKey(() => Post)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare post_id: number | null;
+  declare post_id: number;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  declare user_id: number | null;
+  declare user_id: number;
 
   @BelongsTo(() => Post)
   declare post: Post;

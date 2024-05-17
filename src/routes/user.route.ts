@@ -1,6 +1,10 @@
 import express, { Request, Response } from "express";
-import { Follower, Following, User, UserAddress } from "../models/users";
+import { User, UserAddress } from "../models/users";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
+import { Order, OrderItem, PaymentDetails } from "../models/orders";
+import { Product, ProductImage } from "../models/products";
+import { BookingDetails, StylistBooking } from "../models/booking";
+import { Stylist, StylistImage } from "../models/stylists";
 
 const router = express.Router();
 
@@ -104,7 +108,7 @@ router.post(
 
       const updatedUser = await User.update(
         { profile_picture },
-        { where: { user_id: userId } }
+        { where: { user_id: userId } },
       );
 
       res.status(200).json({
@@ -120,7 +124,7 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // Create user address
@@ -133,6 +137,8 @@ router.post(
       const {
         country,
         city,
+        province,
+        district,
         postal_code,
         telephone,
         mobile,
@@ -141,17 +147,24 @@ router.post(
         name,
       } = req.body;
 
-      const addAddress = await UserAddress.create({
+      const existingAddress = await UserAddress.findOne({
+        where: { user_id: userId },
+      });
+
+      const addAddress = await UserAddress.create<any>({
         user_id: userId,
         country,
         city,
         postal_code,
+        province,
+        district,
         telephone,
         mobile,
         receiver_name,
         address,
         name,
-      } as UserAddress);
+        is_primary: existingAddress ? false : true,
+      });
 
       res.status(201).json({
         code: 201,
@@ -167,7 +180,51 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
+);
+
+router.put(
+  "/address-primary/:address_id",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const addressId = req.params.address_id;
+
+      // Find the current primary address
+      const currentPrimaryAddress = await UserAddress.findOne<any>({
+        where: { user_id: userId, is_primary: true },
+      });
+
+      // If there's a current primary address, set it to false
+      if (currentPrimaryAddress) {
+        await UserAddress.update(
+          { is_primary: false },
+          { where: { address_id: currentPrimaryAddress.address_id } },
+        );
+      }
+
+      // Set the new address as primary
+      const updatedAddress = await UserAddress.update(
+        { is_primary: true },
+        { where: { address_id: addressId, user_id: userId } },
+      );
+
+      res.status(200).json({
+        code: 200,
+        status: "success",
+        message: "Address set as primary successfully",
+        data: updatedAddress,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
 );
 
 // Get user address
@@ -177,6 +234,7 @@ router.get("/address", verifyToken, async (req: Request, res: Response) => {
 
     const address = await UserAddress.findAll({
       where: { user_id: userId },
+      order: [["is_primary", "DESC"]],
     });
 
     res.status(200).json({
@@ -204,7 +262,7 @@ router.put(
     try {
       const { userId } = getUserIdFromToken(req, res);
 
-      const address_user = await UserAddress.findOne({
+      const address_user = await UserAddress.findOne<any>({
         where: {
           user_id: userId,
           address_id: address_id,
@@ -247,7 +305,7 @@ router.put(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // Delete address
@@ -260,7 +318,7 @@ router.delete(
     try {
       const { userId } = getUserIdFromToken(req, res);
 
-      const address_user = await UserAddress.findOne({
+      const address_user = await UserAddress.findOne<any>({
         where: {
           user_id: userId,
           address_id: address_id,
@@ -301,167 +359,72 @@ router.delete(
         error: error.message,
       });
     }
-  }
+  },
 );
 
-//following other user
-router.post(
-  "/follow/:user_id",
+// Combine and sort orders and bookings
+router.get(
+  "/all-activity",
   verifyToken,
   async (req: Request, res: Response) => {
-    const { userId } = getUserIdFromToken(req, res); //auth user
-
-    const followerId = parseInt(req.params.user_id); //user to follow
-
     try {
-      const existingFollow = await Following.findOne({
-        where: {
-          user_id: followerId,
-          following_user_id: userId,
-        },
-      });
+      const { userId } = getUserIdFromToken(req, res);
 
-      if (existingFollow) {
-        return res
-          .status(400)
-          .json({ message: "You are already following this user" });
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
       }
 
-      const followUser = await Following.create({
-        user_id: followerId,
-        following_user_id: userId,
-      } as Following);
-
-      const existingFollower = await Follower.findOne({
-        where: {
-          user_id: userId,
-          follower_user_id: followerId,
-        },
-      });
-
-      if (!existingFollower) {
-        await Follower.create({
-          user_id: userId,
-          follower_user_id: followerId,
-        } as Follower);
-      }
-
-      res
-        .status(201)
-        .json({ code: 201, message: "User followed successfully", followUser });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-//unfollow other user
-router.delete(
-  "/unfollow/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const { userId } = getUserIdFromToken(req, res);
-    const followingId = parseInt(req.params.user_id);
-
-    try {
-      const unfollowUser = await Following.destroy({
-        where: {
-          user_id: followingId,
-          following_user_id: userId,
-        },
-      });
-
-      await Follower.destroy({
-        where: {
-          user_id: userId,
-          follower_user_id: followingId,
-        },
-      });
-
-      res.status(200).json({
-        code: 200,
-        message: "User Unfollowed succesfully",
-        unfollowUser,
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Get followers of the authenticated user
-router.get("/followers", verifyToken, async (req: Request, res: Response) => {
-  const { userId } = getUserIdFromToken(req, res);
-
-  try {
-    const followers = await Follower.findAll({
-      where: { user_id: userId },
-      include: [{ model: User, as: "followerUser" }], // Include the follower details
-    });
-
-    if (followers.length === 0)
-      return res.status(404).json({ message: "No followers found" });
-
-    res.status(200).json({ code: 200, followers });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Get following of the authenticated user
-router.get("/following", verifyToken, async (req: Request, res: Response) => {
-  const { userId } = getUserIdFromToken(req, res);
-  try {
-    const following = await Following.findAll({
-      where: { user_id: userId },
-      include: [{ model: User, as: "followingUser" }],
-    });
-    res.status(200).json({ code: 200, following });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Get followers of another user
-router.get(
-  "/followers/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const userId = parseInt(req.params.user_id);
-    try {
-      const followers = await Follower.findAll({
+      // Fetch orders
+      const orders = await Order.findAll<any>({
         where: { user_id: userId },
-        include: [{ model: User, as: "followerUser" }],
+        include: [
+          {
+            model: OrderItem,
+            include: [{ model: Product, include: [{ model: ProductImage }] }],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
       });
-      res.status(200).json({ code: 200, followers });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
 
-// Get following of another user
-router.get(
-  "/following/:user_id",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    const userId = req.params.user_id;
-    try {
-      const following = await Following.findAll({
-        where: { user_id: userId },
-        include: [{ model: User, as: "followingUser" }],
+      // Fetch bookings
+      const bookings = await StylistBooking.findAll<any>({
+        where: { customer_id: userId },
+        include: [
+          {
+            model: Stylist,
+            include: [
+              {
+                model: User,
+              },
+              {
+                model: StylistImage,
+              },
+            ],
+          },
+          {
+            model: BookingDetails,
+            include: [
+              {
+                model: PaymentDetails,
+              },
+            ],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
       });
-      res.status(200).json({ code: 200, following });
+
+      const combined = [...orders, ...bookings].sort((a, b) => {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+
+      res.status(200).json({ code: 200, data: combined });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error" });
+      console.error("Error fetching orders and bookings:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
-  }
+  },
 );
 
 export default router;

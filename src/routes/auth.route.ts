@@ -38,7 +38,7 @@ router.post("/register", async (req: Request, res: Response) => {
       user: user,
     });
   } catch (error: any) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ code: 400, message: error.message });
   }
 });
 
@@ -81,7 +81,7 @@ router.post("/login", async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.user_id, email: user.email, userRole: user.user_role },
       JWT_SECRET,
-      { expiresIn }
+      { expiresIn },
     );
 
     res.status(200).json({
@@ -113,7 +113,7 @@ router.post("/refresh-token", async (req: Request, res: Response) => {
   try {
     const decodedToken: any = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET || ""
+      process.env.JWT_REFRESH_SECRET || "",
     );
     const userId = decodedToken.userId;
 
@@ -121,7 +121,7 @@ router.post("/refresh-token", async (req: Request, res: Response) => {
     const newAccessToken = jwt.sign(
       { userId: userId },
       process.env.JWT_SECRET || "",
-      { expiresIn: "24h" }
+      { expiresIn: "24h" },
     );
 
     res.status(200).json({

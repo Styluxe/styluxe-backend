@@ -5,9 +5,10 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
+  HasOne,
 } from "sequelize-typescript";
 import { Stylist } from "./stylists";
-import { User, UserAddress } from "./users";
+import { User } from "./users";
 import { PaymentDetails } from "./orders";
 
 @Table({
@@ -22,6 +23,12 @@ export class StylistBooking extends Model<StylistBooking> {
     autoIncrement: true,
   })
   declare booking_id: number;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  declare booking_number: string;
 
   @ForeignKey(() => Stylist)
   @Column({
@@ -44,15 +51,26 @@ export class StylistBooking extends Model<StylistBooking> {
   declare customer: User;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.ENUM(
+      "pending",
+      "waiting for confirmation",
+      "accepted",
+      "rejected",
+      "scheduled",
+      "done",
+      "cancelled",
+    ),
     allowNull: true,
   })
   declare status: string;
+
+  @HasOne(() => BookingDetails)
+  declare booking_details: any;
 }
 
 @Table({
-  timestamps: true,
   tableName: "booking_details",
+  timestamps: false,
 })
 export class BookingDetails extends Model<BookingDetails> {
   @Column({
@@ -74,7 +92,7 @@ export class BookingDetails extends Model<BookingDetails> {
   declare stylist_booking: StylistBooking;
 
   @Column({
-    type: DataType.TIME,
+    type: DataType.STRING,
     allowNull: true,
   })
   declare booking_time: string;
@@ -84,22 +102,6 @@ export class BookingDetails extends Model<BookingDetails> {
     allowNull: true,
   })
   declare booking_date: Date;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare booking_type: string;
-
-  @ForeignKey(() => UserAddress)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare address_id: number;
-
-  @BelongsTo(() => UserAddress)
-  declare user_address: UserAddress;
 
   @ForeignKey(() => PaymentDetails)
   @Column({

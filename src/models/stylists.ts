@@ -5,6 +5,7 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
+  HasMany,
 } from "sequelize-typescript";
 import { User } from "./users";
 
@@ -21,36 +22,98 @@ export class Stylist extends Model<Stylist> {
   })
   declare stylist_id: number;
 
+  @ForeignKey(() => User)
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
+    type: DataType.INTEGER,
+    allowNull: false,
   })
-  declare first_name: string;
+  declare user_id: number;
+
+  @BelongsTo(() => User)
+  declare user: User;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  declare last_name: string;
+  declare brand_name: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare about: string;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare rating: number;
+
+  //price
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare price: number;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
-    unique: true,
   })
-  declare email: string;
+  declare type: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  declare address: string;
+  declare image_url: string;
+
+  @Column({
+    type: DataType.ENUM("online", "offline"),
+    allowNull: true,
+    defaultValue: "offline",
+  })
+  declare online_status: string;
+
+  @HasMany(() => StylistSchedule)
+  declare schedules: StylistSchedule[];
+
+  @HasMany(() => StylistReview)
+  declare reviews: StylistReview[];
+
+  @HasMany(() => StylistImage)
+  declare images: StylistImage[];
+}
+
+@Table({
+  tableName: "stylist_images",
+  timestamps: false,
+})
+export class StylistImage extends Model<StylistImage> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare stylist_image_id: number;
+
+  @ForeignKey(() => Stylist)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare stylist_id: number;
+
+  @BelongsTo(() => Stylist)
+  declare stylist: Stylist;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
-  declare phone_number: string;
+  declare image_url: string;
 }
 
 @Table({
@@ -121,52 +184,49 @@ export class StylistSchedule extends Model<StylistSchedule> {
 
   @BelongsTo(() => Stylist)
   declare stylist: Stylist;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare day: string;
+
+  @HasMany(() => StylistScheduleTime)
+  declare times: StylistScheduleTime[];
 }
 
 @Table({
-  timestamps: false,
-  tableName: "schedule_item",
+  timestamps: true,
+  tableName: "stylist_schedule_time",
 })
-export class ScheduleItem extends Model<ScheduleItem> {
+export class StylistScheduleTime extends Model<StylistScheduleTime> {
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
     primaryKey: true,
     autoIncrement: true,
   })
-  declare schedule_item_id: number;
+  declare stylist_schedule_time_id: number;
 
   @ForeignKey(() => StylistSchedule)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
-  declare schedule_id: number;
+  declare stylist_schedule_id: number;
 
   @BelongsTo(() => StylistSchedule)
   declare stylist_schedule: StylistSchedule;
 
   @Column({
-    type: DataType.DATEONLY,
+    type: DataType.STRING,
     allowNull: true,
   })
-  declare date: Date;
-
-  @Column({
-    type: DataType.TIME,
-    allowNull: true,
-  })
-  declare start_time: string;
-
-  @Column({
-    type: DataType.TIME,
-    allowNull: true,
-  })
-  declare end_time: string;
+  declare time: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  declare duration: string;
+  declare status: string;
 }

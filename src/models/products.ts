@@ -8,11 +8,10 @@ import {
   Table,
   HasOne,
 } from "sequelize-typescript";
-import { User } from "./users";
 
 @Table({
-  timestamps: false,
   tableName: "product_category",
+  timestamps: false,
 })
 export class ProductCategory extends Model<ProductCategory> {
   @Column({
@@ -25,13 +24,13 @@ export class ProductCategory extends Model<ProductCategory> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare category_name: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare category_icon: string;
 
@@ -39,15 +38,15 @@ export class ProductCategory extends Model<ProductCategory> {
     type: DataType.TEXT,
     allowNull: true,
   })
-  declare category_description: string;
+  declare category_description: string | null;
 
   @HasMany(() => ProductSubCategory)
   declare sub_categories: ProductSubCategory[];
 }
 
 @Table({
-  timestamps: true,
   tableName: "product_sub_category",
+  timestamps: false,
 })
 export class ProductSubCategory extends Model<ProductSubCategory> {
   @Column({
@@ -60,7 +59,7 @@ export class ProductSubCategory extends Model<ProductSubCategory> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare sub_category_name: string;
 
@@ -73,7 +72,7 @@ export class ProductSubCategory extends Model<ProductSubCategory> {
   @ForeignKey(() => ProductCategory)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_category_id: number;
 
@@ -99,7 +98,7 @@ export class Product extends Model<Product> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_name: string;
 
@@ -131,17 +130,11 @@ export class Product extends Model<Product> {
   })
   declare product_gender: string;
 
-  @HasMany(() => ProductReview)
-  declare reviews: ProductReview[];
-
   @HasMany(() => ProductImage)
   declare images: ProductImage[];
 
   @HasMany(() => ProductSize)
   declare sizes: ProductSize[];
-
-  @HasMany(() => ProductDiscussion)
-  declare discussions: ProductDiscussion[];
 
   @HasOne(() => ProductCare)
   declare cares: any;
@@ -151,8 +144,8 @@ export class Product extends Model<Product> {
 }
 
 @Table({
-  timestamps: true,
   tableName: "product_image",
+  timestamps: false,
 })
 export class ProductImage extends Model<ProductImage> {
   @Column({
@@ -166,7 +159,7 @@ export class ProductImage extends Model<ProductImage> {
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_id: number;
 
@@ -175,13 +168,14 @@ export class ProductImage extends Model<ProductImage> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
   })
   declare image_url: string;
 }
 
 @Table({
   tableName: "product_materials",
+  timestamps: false,
 })
 export class ProductMaterial extends Model<ProductMaterial> {
   @Column({
@@ -195,7 +189,7 @@ export class ProductMaterial extends Model<ProductMaterial> {
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_id: number;
 
@@ -229,6 +223,7 @@ export class ProductMaterial extends Model<ProductMaterial> {
 
 @Table({
   tableName: "product_care",
+  timestamps: false,
 })
 export class ProductCare extends Model<ProductCare> {
   @Column({
@@ -242,7 +237,7 @@ export class ProductCare extends Model<ProductCare> {
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
   declare product_id: number;
 
@@ -282,86 +277,6 @@ export class ProductCare extends Model<ProductCare> {
 
 @Table({
   timestamps: true,
-  tableName: "product_review",
-})
-export class ProductReview extends Model<ProductReview> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare product_review_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare user_id: number;
-
-  @ForeignKey(() => Product)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_id: number;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @BelongsTo(() => Product)
-  declare product: Product;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  declare feedback: string;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare rating: number;
-
-  @HasMany(() => ProductReviewImage)
-  declare images: ProductReviewImage[];
-}
-
-//review images
-@Table({
-  timestamps: true,
-  tableName: "product_review_image",
-})
-export class ProductReviewImage extends Model<ProductReviewImage> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare product_review_image_id: number;
-
-  @ForeignKey(() => ProductReview)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_review_id: number;
-
-  @BelongsTo(() => ProductReview)
-  declare product_review: ProductReview;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare image_url: string;
-}
-
-@Table({
-  timestamps: true,
   tableName: "product_size",
 })
 export class ProductSize extends Model<ProductSize> {
@@ -394,89 +309,4 @@ export class ProductSize extends Model<ProductSize> {
     allowNull: true,
   })
   declare stock: number;
-}
-
-//create a product discussion model and can be replied by users
-@Table({
-  timestamps: true,
-  tableName: "product_discussion",
-})
-export class ProductDiscussion extends Model<ProductDiscussion> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare product_discussion_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare user_id: number;
-
-  @ForeignKey(() => Product)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_id: number;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @BelongsTo(() => Product)
-  declare product: Product;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  declare discussion: string;
-
-  @HasMany(() => ProductDiscussionReply)
-  declare replies: ProductDiscussionReply[];
-}
-
-//create a product discussion reply model
-@Table({
-  timestamps: true,
-  tableName: "product_discussion_reply",
-})
-export class ProductDiscussionReply extends Model<ProductDiscussionReply> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare product_discussion_reply_id: number;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare user_id: number;
-
-  @ForeignKey(() => ProductDiscussion)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare product_discussion_id: number;
-
-  @BelongsTo(() => User)
-  declare user: User;
-
-  @BelongsTo(() => ProductDiscussion)
-  declare product_discussion: ProductDiscussion;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  declare reply: string;
 }
