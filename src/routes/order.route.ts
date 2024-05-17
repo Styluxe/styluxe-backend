@@ -155,10 +155,10 @@ router.get("/view-cart", verifyToken, async (req: Request, res: Response) => {
         user_id: userId,
       });
 
-      res.status(200).json({ code: 200, data: newShoppingCart });
+      return res.status(200).json({ code: 200, data: newShoppingCart });
     }
 
-    res.status(200).json({ code: 200, data: shoppingCart });
+    return res.status(200).json({ code: 200, data: shoppingCart });
   } catch (error) {
     console.error("Error viewing cart:", error);
     res.status(500).json({ code: 500, error: "Internal Server Error" });
@@ -172,6 +172,12 @@ router.delete(
   async (req: Request, res: Response) => {
     try {
       const cartItemId = parseInt(req.params.cartItemId);
+      if (!cartItemId) {
+        return res
+          .status(404)
+          .json({ code: 404, error: "Cart item not found" });
+      }
+
       const { userId } = getUserIdFromToken(req, res);
 
       const shoppingCart = await ShoppingCart.findOne<any>({
@@ -297,9 +303,15 @@ router.post(
           .json({ code: 500, error: "Internal Server Error (payment)" });
       });
 
+      const generateRandomId = () => {
+        const shortTimestamp = Math.floor(Date.now() / 1000); // Convert timestamp to seconds instead of milliseconds
+        const randomPart = Math.floor(1000 + Math.random() * 9000); // Generate a 4-digit random number
+        return `${shortTimestamp}${randomPart}`;
+      };
+
       const order = await Order.create<any>({
         user_id: userId,
-        order_number: "STLXE" + Math.floor(Math.random() * 90000) + 10000,
+        order_number: "STLXE" + generateRandomId(),
         payment_id: paymentDetails.payment_details_id,
         address_id: address_id,
         total: total,
@@ -347,9 +359,12 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const orderId = parseInt(req.params.orderId);
-      const { userId } = getUserIdFromToken(req, res);
 
-      console.log("ordser", orderId);
+      if (!orderId) {
+        return res.status(400).json({ code: 400, error: "Invalid order ID" });
+      }
+
+      const { userId } = getUserIdFromToken(req, res);
 
       const order = await Order.findOne<any>({
         where: { order_id: orderId },
@@ -460,6 +475,11 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const orderId = parseInt(req.params.orderId);
+
+      if (!orderId) {
+        return res.status(400).json({ code: 400, error: "Invalid order ID" });
+      }
+
       const { userId } = getUserIdFromToken(req, res);
 
       const order = await Order.findOne<any>({
@@ -492,6 +512,11 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const orderId = parseInt(req.params.orderId);
+
+      if (!orderId) {
+        return res.status(400).json({ code: 400, error: "Invalid order ID" });
+      }
+
       const { userId } = getUserIdFromToken(req, res);
 
       // Find the order by its ID

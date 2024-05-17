@@ -15,6 +15,7 @@ import ProductRoutes from "./routes/product.route";
 import OrderRoutes from "./routes/order.route";
 import StylistRoutes from "./routes/stylist.route";
 import ConversationRoutes from "./routes/conversation.route";
+import BookingRoutes from "./routes/booking.route";
 import { v2 as cloudinary } from "cloudinary";
 
 const app = express();
@@ -57,9 +58,9 @@ app.use("/product", ProductRoutes);
 app.use("/order", OrderRoutes);
 app.use("/conversation", ConversationRoutes);
 app.use("/stylist", StylistRoutes);
+app.use("/booking", BookingRoutes);
 
 const port = process.env.PORT || 8080;
-const socketPort = 8082;
 
 const start = async (): Promise<void> => {
   try {
@@ -67,12 +68,8 @@ const start = async (): Promise<void> => {
     console.log("Database migration completed successfully.");
 
     server.listen(port, () => {
-      console.log(`Express server started on port ${port}`);
+      console.log(`Server started on port ${port}`);
     });
-
-    // Socket.IO server listens on a separate port
-    io.listen(socketPort);
-    console.log(`Socket.IO server started on port ${socketPort}`);
   } catch (error) {
     console.error("Database migration failed:", error);
     process.exit(1);

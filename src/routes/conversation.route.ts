@@ -3,6 +3,8 @@ import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Participant, Conversation, Message } from "../models/conversation";
 import { User } from "../models/users";
 import { io } from "../main";
+import { BookingDetails, StylistBooking } from "../models/booking";
+import { Stylist } from "../models/stylists";
 
 const router = express.Router();
 
@@ -15,12 +17,13 @@ router.post("/create", verifyToken, async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid token." });
     }
 
-    const { start_time, end_time, participants } = req.body;
+    const { start_time, end_time, participants, booking_id } = req.body;
 
     // Create a conversation
     const conversation = await Conversation.create<any>({
       start_time,
       end_time,
+      booking_id,
     });
 
     await Promise.all(
@@ -102,6 +105,93 @@ router.get(
             ],
           },
           {
+            model: StylistBooking,
+            include: [
+              {
+                model: Stylist,
+                include: [
+                  {
+                    model: User,
+                    attributes: ["first_name", "last_name", "profile_picture"],
+                  },
+                ],
+              },
+              {
+                model: BookingDetails,
+              },
+            ],
+          },
+          {
+            model: Message,
+            include: [
+              {
+                model: Participant,
+                include: [
+                  {
+                    model: User,
+                    attributes: ["first_name", "last_name", "profile_picture"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      res.status(200).json({ code: 200, data: conversation });
+    } catch (error) {
+      res.status(500).json({ code: 500, message: "Internal server error" });
+    }
+  },
+);
+
+//get conversation by booking id
+router.get(
+  "/booking/:bookingId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const { bookingId } = req.params;
+
+      const conversation = await Conversation.findOne({
+        where: { booking_id: bookingId },
+        include: [
+          {
+            model: Participant,
+            include: [
+              {
+                model: User,
+                attributes: ["first_name", "last_name", "profile_picture"],
+              },
+            ],
+          },
+          {
+            model: StylistBooking,
+            include: [
+              {
+                model: Stylist,
+                include: [
+                  {
+                    model: User,
+                    attributes: ["first_name", "last_name", "profile_picture"],
+                  },
+                ],
+              },
+              {
+                model: BookingDetails,
+              },
+              {
+                model: User,
+              },
+            ],
+          },
+          {
             model: Message,
             include: [
               {
@@ -127,7 +217,7 @@ router.get(
 
 //post message
 router.post(
-  "/:conversationId/message",
+  "/:bookingId/message",
   verifyToken,
   async (req: Request, res: Response) => {
     try {
@@ -137,12 +227,12 @@ router.post(
         return res.status(401).json({ message: "Invalid token." });
       }
 
-      const { conversationId } = req.params;
+      const { bookingId } = req.params;
 
       const { message } = req.body;
 
       const conversation = await Conversation.findOne({
-        where: { conversation_id: conversationId },
+        where: { booking_id: bookingId },
       });
 
       if (!conversation) {
@@ -151,13 +241,39 @@ router.post(
           .json({ code: 404, message: "Conversation not found" });
       }
 
+      const participant = await Participant.findOne({
+        where: {
+          user_id: userId,
+          conversation_id: conversation.conversation_id,
+        },
+      });
+
       const newMessage = await Message.create<any>({
-        conversation_id: conversationId,
-        participant_id: userId,
+        conversation_id: conversation.conversation_id,
+        participant_id: participant?.participant_id,
         message_text: message,
       });
 
-      io.emit("message", { conversationId, code: 201, data: newMessage });
+      //get message to emit
+      const messageToEmit = await Message.findOne({
+        where: { message_id: newMessage.message_id },
+        include: [
+          {
+            model: Participant,
+            include: [
+              {
+                model: User,
+                attributes: ["first_name", "last_name", "profile_picture"],
+              },
+            ],
+          },
+        ],
+      });
+
+      io.emit("new-message", {
+        conversation_id: conversation.conversation_id,
+        message: messageToEmit,
+      });
 
       res.status(201).json({ code: 201, data: newMessage });
     } catch (error: any) {
@@ -166,6 +282,46 @@ router.post(
         message: "Internal server error",
         error: error.message,
       });
+    }
+  },
+);
+
+//get all messages by booking id
+router.get(
+  "/booking/:bookingId/messages",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const { bookingId } = req.params;
+
+      const conversation = await Conversation.findOne({
+        where: { booking_id: bookingId },
+      });
+
+      const messages = await Message.findAll({
+        where: { conversation_id: conversation?.conversation_id },
+        include: [
+          {
+            model: Participant,
+            include: [
+              {
+                model: User,
+                attributes: ["first_name", "last_name", "profile_picture"],
+              },
+            ],
+          },
+        ],
+      });
+
+      res.status(200).json({ code: 200, data: messages });
+    } catch (error) {
+      res.status(500).json({ code: 500, message: "Internal server error" });
     }
   },
 );

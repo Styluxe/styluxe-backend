@@ -8,6 +8,7 @@ import {
   StylistScheduleTime,
 } from "../models/stylists";
 import { User } from "../models/users";
+import { Op, Sequelize } from "sequelize";
 
 const router = express.Router();
 
@@ -236,100 +237,108 @@ router.post("/time", verifyToken, async (req: Request, res: Response) => {
 });
 
 //update stylist time
-router.put("/time/:stylistScheduleTimeId", verifyToken, async (req: Request, res: Response) => {
-  try {
-    const { userRole } = getUserIdFromToken(req, res);
+router.put(
+  "/time/:stylistScheduleTimeId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userRole } = getUserIdFromToken(req, res);
 
-    const { stylistScheduleTimeId } = req.params;
-    const { time, status } = req.body;
+      const { stylistScheduleTimeId } = req.params;
+      const { time, status } = req.body;
 
-    if (userRole !== "stylist") {
-      return res.status(401).json({
-        code: 401,
-        status: "Unauthorized",
-        message: "You are not authorized to perform this action.",
-    })
-  }
+      if (userRole !== "stylist") {
+        return res.status(401).json({
+          code: 401,
+          status: "Unauthorized",
+          message: "You are not authorized to perform this action.",
+        });
+      }
 
-  const stylistScheduleTime = await StylistScheduleTime.findOne({
-    where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      const stylistScheduleTime = await StylistScheduleTime.findOne({
+        where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      });
 
-  });
+      if (!stylistScheduleTime) {
+        return res.status(404).json({
+          code: 404,
+          status: "Not Found",
+          message: "Stylist schedule not found.",
+        });
+      }
 
-  if (!stylistScheduleTime) {
-    return res.status(404).json({
-      code: 404,
-      status: "Not Found",
-      message: "Stylist schedule not found.",
-    });
-  }
+      const updatedStylistSchedule = await StylistScheduleTime.update(
+        {
+          time: time,
+          status: status,
+        },
+        {
+          where: { stylist_schedule_time_id: stylistScheduleTimeId },
+        },
+      );
 
-  const updatedStylistSchedule = await StylistScheduleTime.update({
-    time: time,
-    status: status,
-  }, {
-    where: { stylist_schedule_time_id: stylistScheduleTimeId },
-  })
-
-  res.status(200).json({
-    code: 200,
-    message: "Stylist schedule updated successfully",
-    data: updatedStylistSchedule
-  })
-
-} catch (error: any) {
-  res.status(500).json({
-    code: 500,
-    status: "Internal Server Error",
-    message: error.message,
-  })
-} 
-  
-})
-
-//delete stylist time
-router.delete("/time/:stylistScheduleTimeId", verifyToken, async (req: Request, res: Response) => {
-  try {
-    const { userRole } = getUserIdFromToken(req, res);
-
-    const { stylistScheduleTimeId } = req.params;
-
-    if (userRole !== "stylist") {
-      return res.status(401).json({
-        code: 401,
-        status: "Unauthorized",
-        message: "You are not authorized to perform this action.",
+      res.status(200).json({
+        code: 200,
+        message: "Stylist schedule updated successfully",
+        data: updatedStylistSchedule,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
       });
     }
+  },
+);
 
-    const stylistScheduleTime = await StylistScheduleTime.findOne({
-      where: { stylist_schedule_time_id: stylistScheduleTimeId },
-    });
-    
-    if (!stylistScheduleTime) {
-      return res.status(404).json({
-        code: 404,
-        status: "Not Found",
-    })
-  }
+//delete stylist time
+router.delete(
+  "/time/:stylistScheduleTimeId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userRole } = getUserIdFromToken(req, res);
 
-  const deletedStylistSchedule = await StylistScheduleTime.destroy({
-    where: { stylist_schedule_time_id: stylistScheduleTimeId },
-  })
+      const { stylistScheduleTimeId } = req.params;
 
-  res.status(200).json({
-    code: 200,
-    message: "Stylist schedule deleted successfully",
-    data: deletedStylistSchedule
-  })
-} catch (error: any) {
-  res.status(500).json({
-    code: 500,
-    status: "Internal Server Error",
-    message: error.message,
-  });
-}
-})
+      if (userRole !== "stylist") {
+        return res.status(401).json({
+          code: 401,
+          status: "Unauthorized",
+          message: "You are not authorized to perform this action.",
+        });
+      }
+
+      const stylistScheduleTime = await StylistScheduleTime.findOne({
+        where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      });
+
+      if (!stylistScheduleTime) {
+        return res.status(404).json({
+          code: 404,
+          status: "Not Found",
+        });
+      }
+
+      const deletedStylistSchedule = await StylistScheduleTime.destroy({
+        where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      });
+
+      res.status(200).json({
+        code: 200,
+        message: "Stylist schedule deleted successfully",
+        data: deletedStylistSchedule,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
 
 //get schedule
 router.get("/schedule", verifyToken, async (req: Request, res: Response) => {
@@ -399,24 +408,30 @@ router.get("/schedule", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
-//get all stylist 
-router.get("/all", verifyToken, async (req: Request, res: Response) => {
-  try{
-    const stylists = await Stylist.findAll({
-      include: [
-        { model: User, attributes: ["first_name", "last_name"] },
-        {
-          model: StylistImage,
-        },
-        {
-          model: StylistSchedule,
-          include: [{ model: StylistScheduleTime }],
-        },
+const DAYS_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+//get schedule by stylist id
+router.get("/schedule/:stylist_id", async (req: Request, res: Response) => {
+  try {
+    const { stylist_id } = req.params;
+
+    const schedules = await StylistSchedule.findAll({
+      where: { stylist_id: stylist_id },
+      include: [{ model: StylistScheduleTime }],
+      order: [
+        [Sequelize.literal(`FIELD(day, '${DAYS_ORDER.join("','")}')`), "ASC"],
       ],
     });
 
-    res.status(200).json({ code: 200, data: stylists });
-
+    res.status(200).json({ code: 200, data: schedules });
   } catch (error: any) {
     res.status(500).json({
       code: 500,
@@ -424,6 +439,110 @@ router.get("/all", verifyToken, async (req: Request, res: Response) => {
       message: error.message,
     });
   }
-})
+});
+
+router.get("/all", async (req: Request, res: Response) => {
+  try {
+    const stylists = await Stylist.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ["first_name", "last_name"],
+        },
+        {
+          model: StylistImage,
+        },
+        {
+          model: StylistSchedule,
+          include: [
+            {
+              model: StylistScheduleTime,
+              where: {
+                time: {
+                  [Op.ne]: null,
+                },
+              },
+              required: true,
+            },
+          ],
+          required: true,
+          order: [
+            [
+              Sequelize.literal(`FIELD(day, '${DAYS_ORDER.join("','")}')`),
+            ] as any,
+          ],
+        },
+      ],
+      order: [
+        [
+          Sequelize.literal(
+            `CASE online_status WHEN 'online' THEN 1 ELSE 2 END`,
+          ),
+          "ASC",
+        ],
+      ],
+    });
+
+    res.status(200).json({ code: 200, data: stylists });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//get profile by id
+router.get("/profile/:stylist_id", async (req: Request, res: Response) => {
+  try {
+    const { stylist_id } = req.params;
+
+    const stylist = await Stylist.findOne({
+      where: { stylist_id },
+      include: [
+        {
+          model: User,
+          attributes: ["first_name", "last_name"],
+        },
+        {
+          model: StylistImage,
+        },
+        {
+          model: StylistSchedule,
+          include: [
+            {
+              model: StylistScheduleTime,
+              required: false,
+            },
+          ],
+          required: false,
+        },
+        {
+          model: StylistReview,
+        },
+      ],
+      order: [
+        [Sequelize.literal(`FIELD(day, '${DAYS_ORDER.join("','")}')`), "ASC"],
+      ],
+    });
+
+    if (!stylist) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Stylist not found.",
+      });
+    }
+
+    res.status(200).json({ code: 200, data: stylist });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
 
 export default router;

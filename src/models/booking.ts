@@ -5,9 +5,10 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
+  HasOne,
 } from "sequelize-typescript";
 import { Stylist } from "./stylists";
-import { User, UserAddress } from "./users";
+import { User } from "./users";
 import { PaymentDetails } from "./orders";
 
 @Table({
@@ -50,10 +51,21 @@ export class StylistBooking extends Model<StylistBooking> {
   declare customer: User;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.ENUM(
+      "pending",
+      "waiting for confirmation",
+      "accepted",
+      "rejected",
+      "scheduled",
+      "done",
+      "cancelled",
+    ),
     allowNull: true,
   })
   declare status: string;
+
+  @HasOne(() => BookingDetails)
+  declare booking_details: any;
 }
 
 @Table({
@@ -81,12 +93,6 @@ export class BookingDetails extends Model<BookingDetails> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
-  })
-  declare booking_number: string;
-
-  @Column({
-    type: DataType.TIME,
     allowNull: true,
   })
   declare booking_time: string;

@@ -1,6 +1,10 @@
 import express, { Request, Response } from "express";
 import { User, UserAddress } from "../models/users";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
+import { Order, OrderItem, PaymentDetails } from "../models/orders";
+import { Product, ProductImage } from "../models/products";
+import { BookingDetails, StylistBooking } from "../models/booking";
+import { Stylist, StylistImage } from "../models/stylists";
 
 const router = express.Router();
 
@@ -104,7 +108,7 @@ router.post(
 
       const updatedUser = await User.update(
         { profile_picture },
-        { where: { user_id: userId } }
+        { where: { user_id: userId } },
       );
 
       res.status(200).json({
@@ -120,7 +124,7 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // Create user address
@@ -176,7 +180,7 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 router.put(
@@ -196,14 +200,14 @@ router.put(
       if (currentPrimaryAddress) {
         await UserAddress.update(
           { is_primary: false },
-          { where: { address_id: currentPrimaryAddress.address_id } }
+          { where: { address_id: currentPrimaryAddress.address_id } },
         );
       }
 
       // Set the new address as primary
       const updatedAddress = await UserAddress.update(
         { is_primary: true },
-        { where: { address_id: addressId, user_id: userId } }
+        { where: { address_id: addressId, user_id: userId } },
       );
 
       res.status(200).json({
@@ -220,7 +224,7 @@ router.put(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // Get user address
@@ -301,7 +305,7 @@ router.put(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // Delete address
@@ -355,7 +359,72 @@ router.delete(
         error: error.message,
       });
     }
-  }
+  },
+);
+
+// Combine and sort orders and bookings
+router.get(
+  "/all-activity",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      // Fetch orders
+      const orders = await Order.findAll<any>({
+        where: { user_id: userId },
+        include: [
+          {
+            model: OrderItem,
+            include: [{ model: Product, include: [{ model: ProductImage }] }],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      // Fetch bookings
+      const bookings = await StylistBooking.findAll<any>({
+        where: { customer_id: userId },
+        include: [
+          {
+            model: Stylist,
+            include: [
+              {
+                model: User,
+              },
+              {
+                model: StylistImage,
+              },
+            ],
+          },
+          {
+            model: BookingDetails,
+            include: [
+              {
+                model: PaymentDetails,
+              },
+            ],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      const combined = [...orders, ...bookings].sort((a, b) => {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+
+      res.status(200).json({ code: 200, data: combined });
+    } catch (error) {
+      console.error("Error fetching orders and bookings:", error);
+      res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  },
 );
 
 export default router;

@@ -8,6 +8,7 @@ import {
   HasMany,
 } from "sequelize-typescript";
 import { User } from "./users";
+import { StylistBooking } from "./booking";
 
 @Table({
   tableName: "conversations",
@@ -22,6 +23,16 @@ export class Conversation extends Model<Conversation> {
   })
   declare conversation_id: number;
 
+  @ForeignKey(() => StylistBooking)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare booking_id: number;
+
+  @BelongsTo(() => StylistBooking)
+  declare booking: StylistBooking;
+
   @Column({
     type: DataType.DATE,
     allowNull: false,
@@ -33,6 +44,12 @@ export class Conversation extends Model<Conversation> {
     allowNull: false,
   })
   declare end_time: Date;
+
+  @Column({
+    type: DataType.ENUM("open", "closed"),
+    allowNull: true,
+  })
+  declare conversation_status: string;
 
   @HasMany(() => Participant)
   declare participants: Participant[];
