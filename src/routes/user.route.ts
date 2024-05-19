@@ -1,10 +1,11 @@
 import express, { Request, Response } from "express";
-import { User, UserAddress } from "../models/users";
+import { User, UserAddress, UserCoins } from "../models/users";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Order, OrderItem, PaymentDetails } from "../models/orders";
 import { Product, ProductImage } from "../models/products";
 import { BookingDetails, StylistBooking } from "../models/booking";
 import { Stylist, StylistImage } from "../models/stylists";
+import moment from "moment";
 
 const router = express.Router();
 
@@ -426,5 +427,74 @@ router.get(
     }
   },
 );
+
+// Route to get all coins for a user
+router.get("/coins", async (req, res) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+
+    if (!userId) {
+      return res.status(401).json({ code: 401, message: "Invalid token." });
+    }
+
+    const userCoins = await UserCoins.findOne<any>({
+      where: { user_id: userId },
+    });
+
+    if (!userCoins) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "No coins found for this user" });
+    }
+
+    const differenceDay = moment().diff(userCoins.last_claim_date, "days");
+
+    if (differenceDay > 1 && userCoins.claim_day.startsWith("day")) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    }
+
+    res.status(200).json({ code: 200, data: userCoins });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: "Server error" });
+  }
+});
+
+// Route to claim coins for a user
+router.put("/coin/claim", async (req, res) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+
+    if (!userId) {
+      return res.status(401).json({ code: 401, message: "Invalid token." });
+    }
+
+    const { coin_amount, last_claim_date, claim_day } = req.body;
+
+    const existingRecord = await UserCoins.findOne<any>({
+      where: { user_id: userId },
+    });
+
+    if (existingRecord) {
+      existingRecord.coin_amount += coin_amount;
+      existingRecord.last_claim_date = last_claim_date;
+      existingRecord.claim_day = claim_day;
+      await existingRecord.save();
+    } else {
+      await UserCoins.create<any>({
+        user_id: userId,
+        coin_amount,
+        last_claim_date,
+        claim_day,
+      });
+    }
+
+    res.status(201).json({ code: 201, message: "Coins claimed successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: "Server error" });
+  }
+});
 
 export default router;

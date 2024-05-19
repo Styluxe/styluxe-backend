@@ -545,4 +545,43 @@ router.get("/profile/:stylist_id", async (req: Request, res: Response) => {
   }
 });
 
+//update stylist online status
+router.put("/online-status", async (req: Request, res: Response) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+    const { online_status } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        code: 401,
+        status: "Unauthorized",
+        message: "You are not authorized to perform this action.",
+      });
+    }
+
+    const stylist = await Stylist.findOne({ where: { user_id: userId } });
+
+    if (!stylist) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Stylist not found.",
+      });
+    }
+
+    const updatedStylist = await Stylist.update(
+      { online_status },
+      { where: { user_id: userId } },
+    );
+
+    res.status(200).json({ code: 200, data: updatedStylist });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
 export default router;

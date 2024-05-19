@@ -9,8 +9,9 @@ import {
 } from "../models/orders";
 import { Product, ProductImage } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
-import { UUIDV4 } from "sequelize";
 import { UserAddress } from "../models/users";
+import { Op } from "sequelize";
+import { CronJob } from "cron";
 
 const router = express.Router();
 
@@ -554,6 +555,28 @@ router.put(
     } catch (error) {
       console.error("Error cancelling order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
+    }
+  },
+);
+
+router.get(
+  "/get-orders-due-for-payment",
+  async (req: Request, res: Response) => {
+    try {
+      const now = new Date();
+      const overduePayment = await PaymentDetails.findAll({
+        where: {
+          payment_status: "pending",
+          payment_deadline: {
+            [Op.lt]: now,
+          },
+        },
+        include: Order,
+      });
+
+      res.status(200).json({ code: 200, data: overduePayment });
+    } catch (error) {
+      console.error("Error setting payment status failed:", error);
     }
   },
 );

@@ -17,6 +17,7 @@ import StylistRoutes from "./routes/stylist.route";
 import ConversationRoutes from "./routes/conversation.route";
 import BookingRoutes from "./routes/booking.route";
 import { v2 as cloudinary } from "cloudinary";
+import { startOrderPaymentCronJobs } from "./cronJob/order.cron";
 
 const app = express();
 
@@ -66,6 +67,8 @@ const start = async (): Promise<void> => {
   try {
     await connection.sync({ alter: false, force: false });
     console.log("Database migration completed successfully.");
+
+    startOrderPaymentCronJobs();
 
     server.listen(port, () => {
       console.log(`Server started on port ${port}`);

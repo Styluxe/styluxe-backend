@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize-typescript";
 import dotenv from "dotenv";
-import { User, UserAddress } from "../models/users";
+import { User, UserAddress, UserCoins } from "../models/users";
 import {
   Bookmark,
   Image,
@@ -47,6 +47,7 @@ const connection = new Sequelize({
   models: [
     User,
     UserAddress,
+    UserCoins,
     Post,
     PostCategory,
     PostComment,

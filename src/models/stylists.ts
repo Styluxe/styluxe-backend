@@ -50,12 +50,17 @@ export class Stylist extends Model<Stylist> {
   })
   declare rating: number;
 
-  //price
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
   declare price: number;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare balance: number;
 
   @Column({
     type: DataType.STRING,

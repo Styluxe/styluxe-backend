@@ -6,6 +6,7 @@ import {
   ForeignKey,
   BelongsTo,
   HasMany,
+  HasOne,
 } from "sequelize-typescript";
 import {
   UserInterface,
@@ -77,6 +78,9 @@ export class User extends Model<UserInterface> implements UserInterface {
 
   @HasMany(() => UserAddress)
   declare addresses: UserAddress[];
+
+  @HasMany(() => UserCoins)
+  declare coins: UserCoins[];
 }
 
 // user address model
@@ -172,4 +176,63 @@ export class UserAddress
     defaultValue: false,
   })
   declare is_primary: boolean | null;
+}
+
+// user coins model
+@Table({
+  timestamps: true,
+  tableName: "user_coins",
+})
+export class UserCoins extends Model<UserCoins> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare coin_id: number;
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare user_id: number;
+
+  @BelongsTo(() => User)
+  declare user: User;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare coin_amount: number;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  declare last_claim_date: Date | null;
+
+  @Column({
+    type: DataType.ENUM(
+      "day 1",
+      "day 2",
+      "day 3",
+      "day 4",
+      "day 5",
+      "day 6",
+      "day 7",
+    ),
+    allowNull: true,
+  })
+  declare claim_day:
+    | "day 1"
+    | "day 2"
+    | "day 3"
+    | "day 4"
+    | "day 5"
+    | "day 6"
+    | "day 7"
+    | null;
 }
