@@ -564,14 +564,21 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const now = new Date();
-      const overduePayment = await PaymentDetails.findAll({
+      const overduePayment = await Order.findAll({
         where: {
-          payment_status: "pending",
-          payment_deadline: {
-            [Op.lt]: now,
-          },
+          order_status: "pending",
         },
-        include: Order,
+        include: [
+          {
+            model: PaymentDetails,
+            where: {
+              payment_status: "pending",
+              payment_deadline: {
+                [Op.lt]: now,
+              },
+            },
+          },
+        ],
       });
 
       res.status(200).json({ code: 200, data: overduePayment });

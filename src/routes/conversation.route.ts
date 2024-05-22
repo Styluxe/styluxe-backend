@@ -3,7 +3,7 @@ import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Participant, Conversation, Message } from "../models/conversation";
 import { User } from "../models/users";
 import { io } from "../main";
-import { BookingDetails, StylistBooking } from "../models/booking";
+import { StylistBooking } from "../models/booking";
 import { Stylist } from "../models/stylists";
 
 const router = express.Router();
@@ -116,9 +116,6 @@ router.get(
                   },
                 ],
               },
-              {
-                model: BookingDetails,
-              },
             ],
           },
           {
@@ -182,9 +179,6 @@ router.get(
                     attributes: ["first_name", "last_name", "profile_picture"],
                   },
                 ],
-              },
-              {
-                model: BookingDetails,
               },
               {
                 model: User,
@@ -320,6 +314,39 @@ router.get(
       });
 
       res.status(200).json({ code: 200, data: messages });
+    } catch (error) {
+      res.status(500).json({ code: 500, message: "Internal server error" });
+    }
+  },
+);
+
+//update conversation status
+router.patch(
+  "/:conversationId/status",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const { conversationId } = req.params;
+
+      const { status } = req.body;
+
+      const conversation = await Conversation.findOne({
+        where: { conversation_id: conversationId },
+      });
+
+      if (!conversation) {
+        return res
+          .status(404)
+          .json({ code: 404, message: "Conversation not found" });
+      }
+
+      await conversation.update({ conversation_status: status });
     } catch (error) {
       res.status(500).json({ code: 500, message: "Internal server error" });
     }

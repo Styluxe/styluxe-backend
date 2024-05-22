@@ -3,7 +3,7 @@ import { User, UserAddress, UserCoins } from "../models/users";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Order, OrderItem, PaymentDetails } from "../models/orders";
 import { Product, ProductImage } from "../models/products";
-import { BookingDetails, StylistBooking } from "../models/booking";
+import { StylistBooking } from "../models/booking";
 import { Stylist, StylistImage } from "../models/stylists";
 import moment from "moment";
 
@@ -403,12 +403,7 @@ router.get(
             ],
           },
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
         ],
         order: [["createdAt", "DESC"]],
@@ -477,7 +472,7 @@ router.put("/coin/claim", async (req, res) => {
     });
 
     if (existingRecord) {
-      existingRecord.coin_amount += coin_amount;
+      existingRecord.coin_amount = coin_amount;
       existingRecord.last_claim_date = last_claim_date;
       existingRecord.claim_day = claim_day;
       await existingRecord.save();

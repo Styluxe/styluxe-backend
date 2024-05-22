@@ -10,7 +10,7 @@ import {
 } from "sequelize-typescript";
 import { User, UserAddress } from "./users";
 import { Product } from "./products";
-import { BookingDetails } from "./booking";
+import { StylistBooking } from "./booking";
 
 @Table({
   timestamps: true,
@@ -150,8 +150,8 @@ export class PaymentDetails extends Model<PaymentDetails> {
   @HasOne(() => Order)
   declare order: any;
 
-  @HasOne(() => BookingDetails)
-  declare booking_details: BookingDetails;
+  @HasOne(() => StylistBooking)
+  declare booking_details: StylistBooking;
 }
 
 @Table({

@@ -32,7 +32,7 @@ import {
   StylistSchedule,
   StylistScheduleTime,
 } from "../models/stylists";
-import { StylistBooking, BookingDetails } from "../models/booking";
+import { StylistBooking } from "../models/booking";
 import { LatestProduct } from "../models/featured";
 import { Conversation, Message, Participant } from "../models/conversation";
 
@@ -72,7 +72,6 @@ const connection = new Sequelize({
     StylistSchedule,
     StylistScheduleTime,
     StylistBooking,
-    BookingDetails,
     LatestProduct,
     Conversation,
     Participant,

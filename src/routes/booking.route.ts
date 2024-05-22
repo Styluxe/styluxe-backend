@@ -1,11 +1,12 @@
 import express, { Request, Response } from "express";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
-import { BookingDetails, StylistBooking } from "../models/booking";
+import { StylistBooking } from "../models/booking";
 import { PaymentDetails } from "../models/orders";
 import { Stylist, StylistImage } from "../models/stylists";
 import { User } from "../models/users";
 import { Op } from "sequelize";
 import { Conversation, Participant } from "../models/conversation";
+import moment from "moment";
 
 const router = express.Router();
 
@@ -32,6 +33,8 @@ router.post("/new", verifyToken, async (req: Request, res: Response) => {
       stylist_id,
       customer_id: userId,
       status: "pending",
+      booking_time,
+      booking_date,
     });
 
     const randomThreeDigit = Math.floor(Math.random() * 1000);
@@ -50,26 +53,22 @@ router.post("/new", verifyToken, async (req: Request, res: Response) => {
         payment_deadline: paymentDeadline,
       });
 
-      const createBookingDetails = await BookingDetails.create<any>({
-        booking_id: createBooking.booking_id,
-        booking_time,
-        booking_date,
-        payment_id: paymentDetails.payment_details_id,
-      });
+      if (paymentDetails) {
+        createBooking.payment_id = paymentDetails.payment_details_id;
+        await createBooking.save();
 
-      res.status(200).json({
-        code: 200,
-        message: "Booking created successfully",
-        data: createBooking,
-      });
-    }
-
-    if (!createBooking) {
-      return res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: "Failed to create booking.",
-      });
+        res.status(200).json({
+          code: 200,
+          message: "Booking created successfully",
+          data: createBooking,
+        });
+      } else {
+        res.status(500).json({
+          code: 500,
+          status: "Internal Server Error",
+          message: "Failed to create payment details.",
+        });
+      }
     }
   } catch (error: any) {
     res.status(500).json({
@@ -87,11 +86,6 @@ router.get("/stylist/:stylistId", async (req: Request, res: Response) => {
 
     const bookings = await StylistBooking.findAll<any>({
       where: { stylist_id: stylistId },
-      include: [
-        {
-          model: BookingDetails,
-        },
-      ],
     });
 
     res.status(200).json({
@@ -129,15 +123,14 @@ router.get(
             ],
           },
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
           {
             model: User,
+          },
+          {
+            model: Conversation,
+            attributes: ["conversation_id"],
           },
         ],
       });
@@ -183,14 +176,8 @@ router.get(
               },
             ],
           },
-
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
         ],
         order: [["createdAt", "DESC"]],
@@ -227,13 +214,9 @@ router.put(
         where: { booking_id: bookingId },
         include: [
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
+
           {
             model: Stylist,
           },
@@ -247,7 +230,7 @@ router.put(
         return res.status(404).json({ code: 404, error: "Booking not found" });
       }
 
-      const { payment_details_id } = booking.booking_details.payment_details;
+      const { payment_details_id } = booking.payment_details;
 
       const payment = await PaymentDetails.findOne<any>({
         where: { payment_details_id },
@@ -279,7 +262,6 @@ router.put(
 );
 
 //stylist accept status
-// Update the /accept-booking route to handle booking acceptance
 router.put(
   "/accept-booking/:bookingId",
   verifyToken,
@@ -297,9 +279,6 @@ router.put(
       const booking = await StylistBooking.findOne<any>({
         where: { booking_id: bookingId },
         include: [
-          {
-            model: BookingDetails,
-          },
           {
             model: Stylist,
             include: [
@@ -324,8 +303,9 @@ router.put(
       // Create a new conversation entry for the accepted booking
       const newConversation = await Conversation.create<any>({
         booking_id: bookingId,
-        start_time: booking.booking_details.booking_time,
-        end_time: booking.booking_details.booking_time,
+        start_time: start_time,
+        end_time: end_time,
+        conversation_status: "open",
       });
 
       // Add participants to the conversation (stylist and customer)
@@ -393,12 +373,7 @@ router.get(
             ],
           },
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
           {
             model: User,
@@ -449,12 +424,7 @@ router.get(
             ],
           },
           {
-            model: BookingDetails,
-            include: [
-              {
-                model: PaymentDetails,
-              },
-            ],
+            model: PaymentDetails,
           },
           {
             model: User,
@@ -464,6 +434,135 @@ router.get(
       });
 
       return res.status(200).json({ code: 200, data: bookings });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+//get overdue bookings
+router.get("/overdue-bookings", async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+
+    const overduePayment = await StylistBooking.findAll<any>({
+      where: {
+        status: "pending",
+      },
+      include: [
+        {
+          model: PaymentDetails,
+          where: {
+            payment_status: "pending",
+            payment_deadline: {
+              [Op.lt]: now,
+            },
+          },
+        },
+      ],
+    });
+
+    res.status(200).json({ code: 200, data: overduePayment });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//get scheduled bookings
+router.get("/scheduled", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const bookings = await StylistBooking.findAll<any>({
+      where: {
+        status: "accepted",
+      },
+    });
+
+    if (!bookings) {
+      return res.status(404).json({ code: 404, message: "Booking not found" });
+    }
+
+    const now = new Date();
+
+    const scheduledBookings = bookings.filter((booking) => {
+      const bookingDate = `${booking.booking_date}T${booking.booking_time}:00+07:00`;
+      return moment(bookingDate).isBefore(moment(now));
+    });
+
+    if (scheduledBookings.length === 0) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "No scheduled bookings found" });
+    }
+
+    return res.status(200).json({
+      code: 200,
+      message: "Scheduled bookings retrieved successfully",
+      bookings: scheduledBookings,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//end conversation and booking
+router.put(
+  "/end-booking/:bookingId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const { bookingId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const booking = await StylistBooking.findOne<any>({
+        where: { booking_id: bookingId },
+        include: [
+          {
+            model: Conversation,
+          },
+        ],
+      });
+
+      if (!booking) {
+        return res
+          .status(404)
+          .json({ code: 404, message: "Booking not found" });
+      }
+
+      const conversation = booking.conversation;
+      if (!conversation) {
+        return res
+          .status(404)
+          .json({ code: 404, message: "Conversation not found" });
+      }
+
+      if (conversation.conversation_status === "closed") {
+        return res
+          .status(400)
+          .json({ code: 400, message: "Conversation already closed" });
+      }
+
+      await conversation.update({
+        conversation_status: "closed",
+        end_time: new Date(),
+      });
+      await booking.update({ status: "done" });
+      res.status(200).json({ code: 200, message: "Conversation ended" });
     } catch (error: any) {
       res.status(500).json({
         code: 500,

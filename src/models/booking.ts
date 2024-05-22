@@ -10,6 +10,7 @@ import {
 import { Stylist } from "./stylists";
 import { User } from "./users";
 import { PaymentDetails } from "./orders";
+import { Conversation } from "./conversation";
 
 @Table({
   timestamps: true,
@@ -29,6 +30,35 @@ export class StylistBooking extends Model<StylistBooking> {
     allowNull: false,
   })
   declare booking_number: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare booking_time: string;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: true,
+  })
+  declare booking_date: Date;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: true,
+    defaultValue: false,
+  })
+  declare isReviewed: boolean;
+
+  @ForeignKey(() => PaymentDetails)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare payment_id: number;
+
+  @BelongsTo(() => PaymentDetails)
+  declare payment_details: PaymentDetails;
 
   @ForeignKey(() => Stylist)
   @Column({
@@ -64,52 +94,6 @@ export class StylistBooking extends Model<StylistBooking> {
   })
   declare status: string;
 
-  @HasOne(() => BookingDetails)
-  declare booking_details: any;
-}
-
-@Table({
-  tableName: "booking_details",
-  timestamps: false,
-})
-export class BookingDetails extends Model<BookingDetails> {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true,
-  })
-  declare booking_details_id: number;
-
-  @ForeignKey(() => StylistBooking)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare booking_id: number;
-
-  @BelongsTo(() => StylistBooking)
-  declare stylist_booking: StylistBooking;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
-  declare booking_time: string;
-
-  @Column({
-    type: DataType.DATEONLY,
-    allowNull: true,
-  })
-  declare booking_date: Date;
-
-  @ForeignKey(() => PaymentDetails)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: true,
-  })
-  declare payment_id: number;
-
-  @BelongsTo(() => PaymentDetails)
-  declare payment_details: PaymentDetails;
+  @HasOne(() => Conversation)
+  declare conversation: any;
 }

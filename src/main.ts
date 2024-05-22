@@ -16,8 +16,11 @@ import OrderRoutes from "./routes/order.route";
 import StylistRoutes from "./routes/stylist.route";
 import ConversationRoutes from "./routes/conversation.route";
 import BookingRoutes from "./routes/booking.route";
+import midtransRoutes from "./routes/midtrans.route";
+
 import { v2 as cloudinary } from "cloudinary";
 import { startOrderPaymentCronJobs } from "./cronJob/order.cron";
+import { startConversationCronJobs } from "./cronJob/conversation.cron";
 
 const app = express();
 
@@ -60,6 +63,7 @@ app.use("/order", OrderRoutes);
 app.use("/conversation", ConversationRoutes);
 app.use("/stylist", StylistRoutes);
 app.use("/booking", BookingRoutes);
+app.use("/midtrans", midtransRoutes);
 
 const port = process.env.PORT || 8080;
 
@@ -69,6 +73,7 @@ const start = async (): Promise<void> => {
     console.log("Database migration completed successfully.");
 
     startOrderPaymentCronJobs();
+    startConversationCronJobs();
 
     server.listen(port, () => {
       console.log(`Server started on port ${port}`);

@@ -9,6 +9,7 @@ import {
 } from "../models/stylists";
 import { User } from "../models/users";
 import { Op, Sequelize } from "sequelize";
+import { StylistBooking } from "../models/booking";
 
 const router = express.Router();
 
@@ -493,7 +494,7 @@ router.get("/all", async (req: Request, res: Response) => {
   }
 });
 
-//get profile by id
+//get stylist by id
 router.get("/profile/:stylist_id", async (req: Request, res: Response) => {
   try {
     const { stylist_id } = req.params;
@@ -520,6 +521,12 @@ router.get("/profile/:stylist_id", async (req: Request, res: Response) => {
         },
         {
           model: StylistReview,
+          include: [
+            {
+              model: User,
+              attributes: ["first_name", "last_name", "profile_picture"],
+            },
+          ],
         },
       ],
       order: [
@@ -533,6 +540,18 @@ router.get("/profile/:stylist_id", async (req: Request, res: Response) => {
         status: "Not Found",
         message: "Stylist not found.",
       });
+    }
+
+    if (stylist?.reviews?.length > 0) {
+      const calculateRating = () => {
+        const totalRating = stylist?.reviews?.reduce((acc, item) => {
+          return acc + item.rating;
+        }, 0);
+        return totalRating / stylist?.reviews?.length || 0;
+      };
+
+      stylist.rating = calculateRating();
+      await stylist.save();
     }
 
     res.status(200).json({ code: 200, data: stylist });
@@ -575,6 +594,136 @@ router.put("/online-status", async (req: Request, res: Response) => {
     );
 
     res.status(200).json({ code: 200, data: updatedStylist });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//delete stylist schedule time
+router.delete(
+  "/schedule/:stylistScheduleTimeId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userRole } = getUserIdFromToken(req, res);
+      const { stylistScheduleTimeId } = req.params;
+
+      if (userRole !== "stylist") {
+        return res.status(401).json({
+          code: 401,
+          status: "Unauthorized",
+          message: "You are not authorized to perform this action.",
+        });
+      }
+
+      const stylistScheduleTime = await StylistScheduleTime.findOne({
+        where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      });
+
+      if (!stylistScheduleTime) {
+        return res.status(404).json({
+          code: 404,
+          status: "Not Found",
+          message: "Stylist schedule time not found.",
+        });
+      }
+
+      const deletedStylistSchedule = await StylistScheduleTime.destroy({
+        where: { stylist_schedule_time_id: stylistScheduleTimeId },
+      });
+
+      res.status(200).json({ code: 200, data: deletedStylistSchedule });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+//search stylist by name
+router.get("/search", async (req: Request, res: Response) => {
+  try {
+    const search = req.query.search as string;
+
+    const stylists = await Stylist.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ["first_name", "last_name"],
+        },
+        {
+          model: StylistImage,
+        },
+      ],
+      where: {
+        [Op.or]: [
+          {
+            brand_name: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            type: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            "$user.first_name$": {
+              [Op.like]: `%${search}%`,
+            },
+          },
+        ],
+      },
+    });
+
+    res.status(200).json({ code: 200, data: stylists });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//create review
+router.post("/review", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+    const { stylist_id, rating, feedback, booking_id } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        code: 401,
+        status: "Unauthorized",
+        message: "You are not authorized to perform this action.",
+      });
+    }
+
+    const review = await StylistReview.create<any>({
+      stylist_id,
+      user_id: userId,
+      rating,
+      feedback,
+    });
+
+    if (review) {
+      const booking = await StylistBooking.findOne({ where: { booking_id } });
+
+      if (booking) {
+        booking.isReviewed = true;
+        await booking.save();
+      }
+    }
+
+    res.status(200).json({ code: 200, data: review });
   } catch (error: any) {
     res.status(500).json({
       code: 500,
