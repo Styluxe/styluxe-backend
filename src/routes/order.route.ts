@@ -9,7 +9,7 @@ import {
 } from "../models/orders";
 import { Product, ProductImage } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
-import { UserAddress } from "../models/users";
+import { UserAddress, UserCoins } from "../models/users";
 import { Op } from "sequelize";
 import { CronJob } from "cron";
 
@@ -226,6 +226,11 @@ router.get(
         where: { user_id: userId },
       });
 
+      const userCoin = await UserCoins.findOne<any>({
+        where: { user_id: userId },
+        attributes: ["coin_amount"],
+      });
+
       if (!shoppingCart) {
         return res.status(404).json({ code: 404, error: "Cart is empty" });
       }
@@ -247,6 +252,7 @@ router.get(
         data: {
           total_price: total,
           address: address || null,
+          user_coin: userCoin || null,
           cartItems: cartItems,
         },
       });
@@ -264,7 +270,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { userId } = getUserIdFromToken(req, res);
-      const { payment_provider, address_id } = req.body;
+      const { payment_provider, address_id, discount } = req.body;
 
       const shoppingCart = await ShoppingCart.findOne<any>({
         where: { user_id: userId },
@@ -282,6 +288,24 @@ router.post(
       let total = 0;
       for (const cartItem of cartItems) {
         total += cartItem.quantity * cartItem.product.product_price;
+      }
+
+      if (discount) {
+        total -= discount;
+
+        const removePoints = await UserCoins.update<any>(
+          {
+            coin_amount: 0,
+          },
+          {
+            where: { user_id: userId },
+          },
+        ).catch((error) => {
+          console.error("Error removing points:", error);
+          res
+            .status(500)
+            .json({ code: 500, error: "Internal Server Error (points)" });
+        });
       }
 
       const randomThreeDigit = Math.floor(Math.random() * 1000);

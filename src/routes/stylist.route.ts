@@ -733,4 +733,49 @@ router.post("/review", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
+router.get("/reviews", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+
+    if (!userId) {
+      return res.status(401).json({
+        code: 401,
+        status: "Unauthorized",
+        message: "You are not authorized to perform this action.",
+      });
+    }
+
+    const review = await StylistReview.findAll({
+      include: [
+        {
+          model: Stylist,
+          where: {
+            user_id: userId,
+          },
+        },
+        {
+          model: User,
+          attributes: ["first_name", "last_name", "profile_picture"],
+        },
+      ],
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Stylist schedule time not found.",
+      });
+    }
+
+    res.status(200).json({ code: 200, data: review });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
 export default router;

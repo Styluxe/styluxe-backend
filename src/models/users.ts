@@ -12,6 +12,7 @@ import {
   UserInterface,
   userAddressInterface,
 } from "../interface/users.interface";
+import { Post } from "./posts";
 
 @Table({
   timestamps: true,
@@ -81,6 +82,9 @@ export class User extends Model<UserInterface> implements UserInterface {
 
   @HasMany(() => UserCoins)
   declare coins: UserCoins[];
+
+  @HasMany(() => Post)
+  declare posts: Post[];
 }
 
 // user address model

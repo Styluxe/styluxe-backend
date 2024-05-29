@@ -6,8 +6,9 @@ import {
   ForeignKey,
   BelongsTo,
   HasOne,
+  HasMany,
 } from "sequelize-typescript";
-import { Stylist } from "./stylists";
+import { Stylist, StylistReview } from "./stylists";
 import { User } from "./users";
 import { PaymentDetails } from "./orders";
 import { Conversation } from "./conversation";
@@ -96,4 +97,7 @@ export class StylistBooking extends Model<StylistBooking> {
 
   @HasOne(() => Conversation)
   declare conversation: any;
+
+  @HasOne(() => StylistReview)
+  declare review: any;
 }

@@ -98,6 +98,9 @@ export class Post extends Model<PostInterface> implements PostInterface {
 
   @HasMany(() => Image)
   declare images: Image[];
+
+  @HasMany(() => Bookmark)
+  declare bookmarks: Bookmark[];
 }
 
 // Reaction Model
@@ -139,7 +142,7 @@ export class Reaction
 
   @Column({
     type: DataType.STRING,
-    allowNull: false,
+    allowNull: true,
   })
   declare reaction: string;
 }

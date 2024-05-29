@@ -11,6 +11,30 @@ import {
 import { User } from "../models/users";
 const router = express.Router();
 
+//get all post order by createdAt
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const posts = await Post.findAll({
+      include: [
+        { model: User, as: "author" },
+        { model: PostCategory, as: "category" },
+        { model: Reaction },
+        { model: PostComment },
+        { model: Bookmark },
+        { model: Image },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({ code: 200, data: posts });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+    });
+  }
+});
+
 //create category
 router.post(
   "/category/new",
@@ -42,7 +66,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //delete category (if there is a post related to this category it will be set to the "post" category)
@@ -70,7 +94,7 @@ router.delete(
 
       await Post.update(
         { category_id: 1 },
-        { where: { category_id: categoryId } }
+        { where: { category_id: categoryId } },
       );
 
       await category.destroy();
@@ -86,7 +110,7 @@ router.delete(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //view all categories
@@ -131,12 +155,12 @@ router.post(
         });
       }
 
-      if (images) {
+      if (images.length > 0) {
         for (const image of images) {
-          await Image.create({
+          const createImage = await Image.create<any>({
+            image_uri: image,
             post_id: createPost.post_id,
-            image_uri: image.image_uri,
-          } as Image);
+          });
         }
       }
 
@@ -152,11 +176,11 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //view single Post
-router.get("/:postId", async (req: Request, res: Response) => {
+router.get("/id/:postId", async (req: Request, res: Response) => {
   try {
     const postId = req.params.postId;
 
@@ -165,25 +189,34 @@ router.get("/:postId", async (req: Request, res: Response) => {
         { model: User, as: "author" },
         { model: PostCategory, as: "category" },
         { model: Reaction },
-        { model: PostComment },
+        { model: Bookmark },
+        {
+          model: PostComment,
+          include: [
+            {
+              model: User,
+              attributes: ["first_name", "last_name", "profile_picture"],
+            },
+          ],
+        },
         { model: Image },
       ],
     });
 
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      return res.status(404).json({ code: 404, error: "Post not found" });
     }
 
     const responseData = {
       code: 200,
       message: "Post retrieved successfully",
-      post: post,
+      data: post,
     };
 
     res.status(200).json(responseData);
   } catch (error) {
     console.error("Error fetching post:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ code: 500, error: "Internal server error" });
   }
 });
 
@@ -203,10 +236,11 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
       include: [
         {
           model: User,
-          as: "author",
           attributes: ["user_id", "first_name", "last_name", "email"],
         },
         { model: Reaction },
+        { model: PostCategory },
+        { model: Bookmark },
         { model: PostComment },
         { model: Image },
       ],
@@ -258,13 +292,13 @@ router.post(
         });
       }
 
-      const createReaction = await Reaction.create({
+      const createReaction = await Reaction.create<any>({
         user_id: userId,
         post_id: postId,
-      } as unknown as Reaction);
+      });
 
-      res.status(201).json({
-        code: 201,
+      res.status(200).json({
+        code: 200,
         message: "Reaction added successfully",
         data: createReaction,
       });
@@ -275,37 +309,8 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
-
-//view all reactions for post
-router.get("/:postId/reactions", async (req: Request, res: Response) => {
-  try {
-    const postId = req.params.postId;
-
-    const reactions = await Reaction.findAll({
-      where: { post_id: postId },
-      include: [
-        {
-          model: User,
-          attributes: ["user_id", "first_name", "last_name", "email"],
-        },
-      ],
-    });
-
-    res.status(200).json({
-      code: 200,
-      message: "Reactions retrieved successfully",
-      data: reactions,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      code: 500,
-      status: "Internal Server Error",
-      message: error.message,
-    });
-  }
-});
 
 //add comment to post
 router.post(
@@ -345,7 +350,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //add to bookmark
@@ -361,6 +366,19 @@ router.post(
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
+      }
+
+      const existingBookmark = await Bookmark.findOne({
+        where: { user_id: userId, post_id: postId },
+      });
+
+      if (existingBookmark) {
+        await existingBookmark.destroy();
+
+        return res.status(200).json({
+          code: 200,
+          message: "Post removed from bookmark successfully",
+        });
       }
 
       const bookmark = await Bookmark.create({
@@ -380,7 +398,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //view all bookmarked posts
@@ -396,10 +414,17 @@ router.get("/bookmarks", verifyToken, async (req: Request, res: Response) => {
           include: [
             {
               model: User,
-              as: "author",
-              attributes: ["user_id", "first_name", "last_name", "email"],
+              attributes: [
+                "user_id",
+                "first_name",
+                "last_name",
+                "email",
+                "profile_picture",
+              ],
             },
             { model: Reaction },
+            { model: PostCategory },
+            { model: Bookmark },
             { model: PostComment },
             { model: Image },
           ],
@@ -421,37 +446,104 @@ router.get("/bookmarks", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
-//delete from bookmark
-router.delete(
-  "/:postId/bookmark",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const { userId } = getUserIdFromToken(req, res);
-      const postId = req.params.postId;
+//view all posts by author id
+router.get("/author/:authorId", async (req: Request, res: Response) => {
+  try {
+    const authorId = req.params.authorId;
 
-      const bookmark = await Bookmark.findOne({
-        where: { user_id: userId, post_id: postId },
-      });
+    const author = await User.findByPk(authorId, {
+      attributes: [
+        "user_id",
+        "first_name",
+        "last_name",
+        "email",
+        "profile_picture",
+      ],
+    });
 
-      if (!bookmark) {
-        return res.status(404).json({ error: "Bookmark not found" });
-      }
+    const posts = await Post.findAll({
+      where: { author_id: authorId },
+      include: [
+        {
+          model: User,
+          attributes: [
+            "user_id",
+            "first_name",
+            "last_name",
+            "email",
+            "profile_picture",
+          ],
+        },
+        { model: Reaction },
+        { model: PostCategory },
+        { model: Bookmark },
+        { model: PostComment },
+        { model: Image },
+      ],
+    });
 
-      await bookmark.destroy();
-
-      res.status(200).json({
-        code: 200,
-        message: "Post removed from bookmark successfully",
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: error.message,
-      });
-    }
+    res.status(200).json({
+      code: 200,
+      message: "Posts retrieved successfully",
+      data: {
+        author,
+        posts,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
   }
-);
+});
+
+//view all liked posts by user
+router.get("/liked/:userId", async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId;
+
+    const likedPosts = await Reaction.findAll({
+      where: { user_id: userId },
+      include: [
+        {
+          model: Post,
+          include: [
+            {
+              model: User,
+              attributes: [
+                "user_id",
+                "first_name",
+                "last_name",
+                "email",
+                "profile_picture",
+              ],
+            },
+            { model: Reaction },
+            { model: PostCategory },
+            { model: Bookmark },
+            { model: PostComment },
+            { model: Image },
+          ],
+        },
+      ],
+    });
+
+    const likedPost = likedPosts.map((likedPost) => likedPost.post);
+
+    res.status(200).json({
+      code: 200,
+      message: "Liked posts retrieved successfully",
+      data: likedPost,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
 
 export default router;

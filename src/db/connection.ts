@@ -16,6 +16,7 @@ import {
   ProductImage,
   ProductMaterial,
   ProductSize,
+  ProductStylingReference,
   ProductSubCategory,
 } from "../models/products";
 import {
@@ -61,6 +62,7 @@ const connection = new Sequelize({
     ProductMaterial,
     ProductImage,
     ProductSize,
+    ProductStylingReference,
     ShoppingCart,
     CartItem,
     PaymentDetails,

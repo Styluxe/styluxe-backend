@@ -8,6 +8,7 @@ import {
   ProductSubCategory,
   ProductMaterial,
   ProductCare,
+  ProductStylingReference,
 } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { Op } from "sequelize";
@@ -90,7 +91,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //delete category
@@ -127,7 +128,7 @@ router.delete(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //get all  category
@@ -280,7 +281,7 @@ router.put("/:productId", verifyToken, async (req: Request, res: Response) => {
       },
       {
         where: { product_id: productId },
-      }
+      },
     );
 
     // Check if the product was updated successfully
@@ -323,7 +324,7 @@ router.put("/:productId", verifyToken, async (req: Request, res: Response) => {
       },
       {
         where: { product_id: productId },
-      }
+      },
     );
 
     // Update product cares
@@ -337,7 +338,7 @@ router.put("/:productId", verifyToken, async (req: Request, res: Response) => {
       },
       {
         where: { product_id: productId },
-      }
+      },
     );
 
     res.status(200).json({
@@ -408,7 +409,7 @@ router.delete(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 //get a single product
@@ -423,6 +424,7 @@ router.get("/detail/:productId", async (req: Request, res: Response) => {
         { model: ProductImage },
         { model: ProductMaterial },
         { model: ProductCare },
+        { model: ProductStylingReference },
       ],
       where: {
         product_id: productId,
@@ -533,5 +535,109 @@ router.get("/search", async (req: Request, res: Response) => {
     });
   }
 });
+
+//create product filter by accepting size name and name order
+router.post("/filter", async (req: Request, res: Response) => {
+  const { size, order, sortBy, keyword } = req.body;
+
+  try {
+    const sizeFilter = Array.isArray(size)
+      ? { size: { [Op.in]: size } }
+      : size
+      ? { size }
+      : {};
+
+    // Determine the order
+    let orderArray: any[] = [];
+    if (sortBy === "price") {
+      orderArray = [["product_price", order === "desc" ? "DESC" : "ASC"]];
+    } else {
+      orderArray = [["product_name", order === "desc" ? "DESC" : "ASC"]];
+    }
+
+    const products = await Product.findAll({
+      where: {
+        [Op.or]: [
+          {
+            product_name: {
+              [Op.like]: `%${keyword}%`,
+            },
+          },
+          {
+            product_description: {
+              [Op.like]: `%${keyword}%`,
+            },
+          },
+          {
+            "$sub_category.sub_category_name$": {
+              [Op.like]: `%${keyword}%`,
+            },
+          },
+        ],
+      },
+      include: [
+        {
+          model: ProductSize,
+          where: sizeFilter,
+        },
+        { model: ProductSubCategory },
+        { model: ProductImage },
+      ],
+      order: orderArray,
+    });
+
+    res.status(200).json({ code: 200, data: products });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ code: 500, status: "Internal Server Error", message: error });
+  }
+});
+
+//get all latest collection order by created at and limit to only 5
+router.get("/latest", async (req: Request, res: Response) => {
+  try {
+    const products = await Product.findAll({
+      include: [
+        { model: ProductImage },
+        { model: ProductSubCategory, attributes: ["sub_category_name"] },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 5,
+    });
+    res.status(200).json({ code: 200, data: products });
+  } catch (error: any) {
+    res.status(500).json({ code: 500, message: error.message });
+  }
+});
+
+//add styling referenc to products
+router.post(
+  "/product-reference",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        product_id,
+        image_url,
+        model_height,
+        model_weight,
+        product_size,
+      } = req.body;
+
+      const reference = await ProductStylingReference.create<any>({
+        product_id,
+        image_url,
+        model_height,
+        model_weight,
+        product_size,
+      });
+
+      res.status(200).json({ code: 200, data: reference });
+    } catch (error: any) {
+      res.status(500).json({ code: 500, message: error.message });
+    }
+  },
+);
 
 export default router;

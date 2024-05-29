@@ -136,6 +136,9 @@ export class Product extends Model<Product> {
   @HasMany(() => ProductSize)
   declare sizes: ProductSize[];
 
+  @HasMany(() => ProductStylingReference)
+  declare references: ProductStylingReference[];
+
   @HasOne(() => ProductCare)
   declare cares: any;
 
@@ -309,4 +312,52 @@ export class ProductSize extends Model<ProductSize> {
     allowNull: true,
   })
   declare stock: number;
+}
+
+@Table({
+  timestamps: true,
+  tableName: "product_styling_reference",
+})
+export class ProductStylingReference extends Model<ProductStylingReference> {
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare product_styling_reference_id: number;
+
+  @ForeignKey(() => Product)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare product_id: number;
+
+  @BelongsTo(() => Product)
+  declare product: Product;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare image_url: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare model_height: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare model_weight: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare product_size: string;
 }

@@ -192,8 +192,21 @@ router.put(
       const { userId } = getUserIdFromToken(req, res);
       const addressId = req.params.address_id;
 
+      // Ensure the address belongs to the user
+      const address = await UserAddress.findOne({
+        where: { address_id: addressId, user_id: userId },
+      });
+
+      if (!address) {
+        return res.status(404).json({
+          code: 404,
+          status: "fail",
+          message: "Address not found",
+        });
+      }
+
       // Find the current primary address
-      const currentPrimaryAddress = await UserAddress.findOne<any>({
+      const currentPrimaryAddress = await UserAddress.findOne({
         where: { user_id: userId, is_primary: true },
       });
 
@@ -206,18 +219,27 @@ router.put(
       }
 
       // Set the new address as primary
-      const updatedAddress = await UserAddress.update(
+      const [rowsUpdated, updatedAddresses] = await UserAddress.update(
         { is_primary: true },
-        { where: { address_id: addressId, user_id: userId } },
+        { where: { address_id: addressId, user_id: userId }, returning: true },
       );
+
+      if (rowsUpdated === 0) {
+        return res.status(400).json({
+          code: 400,
+          status: "fail",
+          message: "Failed to update the primary address",
+        });
+      }
 
       res.status(200).json({
         code: 200,
         status: "success",
         message: "Address set as primary successfully",
-        data: updatedAddress,
+        data: updatedAddresses[0],
       });
     } catch (error: any) {
+      console.error("Error updating primary address:", error);
       res.status(500).json({
         code: 500,
         status: "Internal Server Error",
@@ -444,7 +466,25 @@ router.get("/coins", async (req, res) => {
 
     const differenceDay = moment().diff(userCoins.last_claim_date, "days");
 
-    if (differenceDay > 1 && userCoins.claim_day.startsWith("day")) {
+    if (userCoins.claim_day === "day 1" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 2" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 3" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 4" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 5" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 6" && differenceDay > 1) {
+      userCoins.claim_day = "day 1";
+      await userCoins.save();
+    } else if (userCoins.claim_day === "day 7" && differenceDay > 1) {
       userCoins.claim_day = "day 1";
       await userCoins.save();
     }

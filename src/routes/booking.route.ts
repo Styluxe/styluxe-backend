@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { StylistBooking } from "../models/booking";
 import { PaymentDetails } from "../models/orders";
-import { Stylist, StylistImage } from "../models/stylists";
+import { Stylist, StylistImage, StylistReview } from "../models/stylists";
 import { User } from "../models/users";
 import { Op } from "sequelize";
 import { Conversation, Participant } from "../models/conversation";
@@ -377,6 +377,9 @@ router.get(
           },
           {
             model: User,
+          },
+          {
+            model: StylistReview,
           },
         ],
         order: [["createdAt", "DESC"]],

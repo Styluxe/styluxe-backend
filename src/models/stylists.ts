@@ -6,8 +6,10 @@ import {
   ForeignKey,
   BelongsTo,
   HasMany,
+  AllowNull,
 } from "sequelize-typescript";
 import { User } from "./users";
+import { StylistBooking } from "./booking";
 
 @Table({
   timestamps: true,
@@ -147,6 +149,16 @@ export class StylistReview extends Model<StylistReview> {
     allowNull: true,
   })
   declare user_id: number;
+
+  @ForeignKey(() => StylistBooking)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare booking_id: number;
+
+  @BelongsTo(() => StylistBooking)
+  declare booking: StylistBooking;
 
   @BelongsTo(() => Stylist)
   declare stylist: Stylist;
