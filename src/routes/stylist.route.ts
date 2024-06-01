@@ -76,7 +76,7 @@ router.put("/profile", verifyToken, async (req: Request, res: Response) => {
       });
     }
 
-    const { brand_name, about, price, type, images } = req.body;
+    const { brand_name, about, price, type, images, delete_images } = req.body;
 
     const updateStylist = await Stylist.update<any>(
       {
@@ -94,33 +94,21 @@ router.put("/profile", verifyToken, async (req: Request, res: Response) => {
       where: { user_id: userId },
     });
 
-    if (images) {
-      images.map(async (image: any) => {
-        const formData = new FormData();
-        formData.append("file", image);
-        formData.append("upload_preset", "user_preset");
-        formData.append("api_key", "761147494786172");
-
-        fetch("https://api.cloudinary.com/v1_1/dkxeflvuu/image/upload", {
-          method: "post",
-          body: formData,
-        }).then((data) => {
-          data.json().then((result: any) => {
-            StylistImage.create<any>({
-              image_url: result.secure_url,
-              stylist_id: getStylistId.stylist_id,
-            });
-          });
+    if (delete_images.length > 0) {
+      for (const image of delete_images) {
+        const deleteImage = await StylistImage.destroy({
+          where: { image_url: image, stylist_id: getStylistId?.stylist_id },
         });
-      });
+      }
     }
 
-    if (!updateStylist) {
-      return res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: "Failed to update stylist.",
-      });
+    if (images.length > 0) {
+      for (const image of images) {
+        const createImage = await StylistImage.create<any>({
+          image_url: image,
+          stylist_id: getStylistId?.stylist_id,
+        });
+      }
     }
 
     res.status(200).json({

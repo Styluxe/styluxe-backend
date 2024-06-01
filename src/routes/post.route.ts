@@ -9,6 +9,7 @@ import {
   Bookmark,
 } from "../models/posts";
 import { User } from "../models/users";
+import { where } from "sequelize";
 const router = express.Router();
 
 //get all post order by createdAt
@@ -545,5 +546,120 @@ router.get("/liked/:userId", async (req: Request, res: Response) => {
     });
   }
 });
+
+//delete post
+router.delete("/:postId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userId } = getUserIdFromToken(req, res);
+    const postId = req.params.postId;
+
+    if (!postId) {
+      return res.status(400).json({ code: 400, error: "Invalid postId" });
+    }
+
+    const delete_post = await Post.destroy({
+      where: { post_id: postId, author_id: userId },
+    });
+
+    res.status(200).json({
+      code: 200,
+      message: "Post deleted successfully",
+      data: delete_post,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//edit post
+router.put("/:postId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const { userId, userRole } = getUserIdFromToken(req, res);
+    const postId = req.params.postId;
+    const { title, content, category_id, images, delete_images } = req.body;
+
+    if (!postId) {
+      return res.status(400).json({ code: 400, error: "Invalid postId" });
+    }
+
+    if (delete_images.length > 0) {
+      for (const image of delete_images) {
+        const deleteImage = await Image.destroy({
+          where: { image_uri: image, post_id: postId },
+        });
+      }
+    }
+
+    const updatedPost = await Post.update<any>(
+      {
+        title,
+        content,
+        category_id,
+      },
+      {
+        where: { post_id: postId },
+      },
+    );
+
+    if (images.length > 0) {
+      for (const image of images) {
+        const createImage = await Image.create<any>({
+          image_uri: image,
+          post_id: postId,
+        });
+      }
+    }
+
+    res.status(200).json({
+      code: 200,
+      message: "Post updated successfully",
+      data: updatedPost,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message: error.message,
+    });
+  }
+});
+
+//remove image from post
+router.delete(
+  "/image/:imageUri",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const imageUri = req.params.imageUri;
+
+      if (!imageUri) {
+        return res.status(400).json({ code: 400, error: "Invalid imageId" });
+      }
+
+      const delete_image = await Image.destroy({
+        where: { image_uri: imageUri },
+      });
+
+      if (!delete_image) {
+        return res.status(404).json({ code: 404, error: "Image not found" });
+      }
+
+      res.status(200).json({
+        code: 200,
+        message: "Image deleted successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
 
 export default router;

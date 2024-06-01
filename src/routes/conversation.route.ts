@@ -223,7 +223,7 @@ router.post(
 
       const { bookingId } = req.params;
 
-      const { message } = req.body;
+      const { message, media } = req.body;
 
       const conversation = await Conversation.findOne({
         where: { booking_id: bookingId },
@@ -246,6 +246,7 @@ router.post(
         conversation_id: conversation.conversation_id,
         participant_id: participant?.participant_id,
         message_text: message,
+        media,
       });
 
       //get message to emit

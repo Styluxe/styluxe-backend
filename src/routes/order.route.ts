@@ -559,19 +559,9 @@ router.put(
 
       // Update payment status, shipping status, and order status to "Cancelled"
       await Promise.all([
-        order.payment_details.update({ payment_status: "Cancelled" }),
-        order.shipping_details.update({ shipping_status: "Cancelled" }),
-        order.update({ status: "Cancelled" }),
+        order.payment_details.update({ payment_status: "failed" }),
+        order.update({ order_status: "cancelled" }),
       ]);
-
-      // Restore product stock
-      for (const orderItem of order.order_items) {
-        const product = orderItem.product;
-        if (product) {
-          await product.increment("product_stock", { by: orderItem.quantity });
-        }
-      }
-
       res.status(200).json({
         code: 200,
         message: "Order cancelled successfully",

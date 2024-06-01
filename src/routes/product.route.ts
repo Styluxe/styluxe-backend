@@ -21,14 +21,14 @@ router.get("/all", async (req: Request, res: Response) => {
   try {
     const products = await Product.findAll({
       include: [
-        { model: ProductCategory },
         { model: ProductSize },
         { model: ProductImage },
+        { model: ProductSubCategory },
       ],
     });
     res.status(200).json({ code: 200, products });
-  } catch {
-    res.status(500).json({ message: "Internal server error" });
+  } catch (error: any) {
+    res.status(500).json({ code: 500, message: error.message });
   }
 });
 
