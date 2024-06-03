@@ -17,6 +17,7 @@ import StylistRoutes from "./routes/stylist.route";
 import ConversationRoutes from "./routes/conversation.route";
 import BookingRoutes from "./routes/booking.route";
 import midtransRoutes from "./routes/midtrans.route";
+import adminRoutes from "./routes/admin.route";
 
 import { v2 as cloudinary } from "cloudinary";
 import { startOrderPaymentCronJobs } from "./cronJob/order.cron";
@@ -64,6 +65,7 @@ app.use("/conversation", ConversationRoutes);
 app.use("/stylist", StylistRoutes);
 app.use("/booking", BookingRoutes);
 app.use("/midtrans", midtransRoutes);
+app.use("/admin", adminRoutes);
 
 const port = process.env.PORT || 8080;
 
