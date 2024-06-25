@@ -7,6 +7,7 @@ import {
   PostComment,
   Reaction,
   Bookmark,
+  Notification,
 } from "../models/posts";
 import { User } from "../models/users";
 import { where } from "sequelize";
@@ -274,7 +275,7 @@ router.post(
         return res.status(400).json({ error: "Invalid postId" });
       }
 
-      const post = await Post.findByPk(postId);
+      const post = await Post.findByPk<any>(postId);
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
@@ -297,6 +298,16 @@ router.post(
         user_id: userId,
         post_id: postId,
       });
+
+      if (post.author_id !== userId) {
+        await Notification.create<any>({
+          user_id: post.author_id,
+          trigger_user_id: userId,
+          post_id: postId,
+          content: "liked your post",
+          read: false,
+        });
+      }
 
       res.status(200).json({
         code: 200,
@@ -327,7 +338,7 @@ router.post(
         return res.status(400).json({ error: "Invalid postId" });
       }
 
-      const post = await Post.findByPk(postId);
+      const post = await Post.findByPk<any>(postId);
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
@@ -338,6 +349,16 @@ router.post(
         post_id: postId,
         content,
       } as unknown as PostComment);
+
+      if (post.author_id !== userId) {
+        await Notification.create<any>({
+          user_id: post.author_id,
+          trigger_user_id: userId,
+          post_id: postId,
+          content: "commented on your post",
+          read: false,
+        });
+      }
 
       res.status(201).json({
         code: 201,
@@ -651,6 +672,72 @@ router.delete(
       res.status(200).json({
         code: 200,
         message: "Image deleted successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+router.get(
+  "/notifications",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      // Fetch all notifications for the user
+      const notifications = await Notification.findAll<any>({
+        where: { user_id: userId },
+        include: [
+          { model: Post },
+          { model: User, as: "user" },
+          { model: User, as: "trigger_user" },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      // Mark all notifications as read
+      await Notification.update<any>(
+        { read: true },
+        { where: { user_id: userId, read: false } },
+      );
+
+      res.status(200).json({
+        code: 200,
+        message: "All notifications fetched and marked as read successfully",
+        data: notifications,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+router.get(
+  "/unread/notifications",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+
+      // Fetch only unread notifications for the user
+      const notifications = await Notification.findAll<any>({
+        where: { user_id: userId, read: false },
+      });
+
+      res.status(200).json({
+        code: 200,
+        message: "Unread notifications fetched successfully",
+        data: notifications,
       });
     } catch (error: any) {
       res.status(500).json({

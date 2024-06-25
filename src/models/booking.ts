@@ -84,12 +84,11 @@ export class StylistBooking extends Model<StylistBooking> {
   @Column({
     type: DataType.ENUM(
       "pending",
-      "waiting for confirmation",
-      "accepted",
-      "rejected",
       "scheduled",
+      "on going",
       "done",
       "cancelled",
+      "refunded",
     ),
     allowNull: true,
   })

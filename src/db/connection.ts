@@ -4,6 +4,7 @@ import { User, UserAddress, UserCoins } from "../models/users";
 import {
   Bookmark,
   Image,
+  Notification,
   Post,
   PostCategory,
   PostComment,
@@ -55,6 +56,7 @@ const connection = new Sequelize({
     Reaction,
     Image,
     Bookmark,
+    Notification,
     ProductCategory,
     ProductSubCategory,
     Product,

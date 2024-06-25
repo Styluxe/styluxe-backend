@@ -25,6 +25,9 @@ router.get("/all", async (req: Request, res: Response) => {
         { model: ProductImage },
         { model: ProductSubCategory },
       ],
+      where: {
+        is_archived: false,
+      },
     });
     res.status(200).json({ code: 200, products });
   } catch (error: any) {
@@ -457,7 +460,13 @@ router.get("/category/:categoryId", async (req: Request, res: Response) => {
     const categoryId = req.params.categoryId;
 
     const category = await ProductSubCategory.findOne({
-      include: [{ model: Product, include: [{ model: ProductImage }] }],
+      include: [
+        {
+          model: Product,
+          where: { is_archived: false },
+          include: [{ model: ProductImage }],
+        },
+      ],
       where: {
         product_sub_category_id: categoryId,
       },
@@ -518,6 +527,7 @@ router.get("/search", async (req: Request, res: Response) => {
             },
           },
         ],
+        is_archived: false,
       },
     });
 
@@ -574,6 +584,7 @@ router.post("/filter", async (req: Request, res: Response) => {
             },
           },
         ],
+        is_archived: false,
       },
       include: [
         {
@@ -604,6 +615,9 @@ router.get("/latest", async (req: Request, res: Response) => {
       ],
       order: [["createdAt", "DESC"]],
       limit: 5,
+      where: {
+        is_archived: false,
+      },
     });
     res.status(200).json({ code: 200, data: products });
   } catch (error: any) {

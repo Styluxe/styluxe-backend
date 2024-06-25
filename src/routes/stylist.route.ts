@@ -414,7 +414,16 @@ router.get("/schedule/:stylist_id", async (req: Request, res: Response) => {
 
     const schedules = await StylistSchedule.findAll({
       where: { stylist_id: stylist_id },
-      include: [{ model: StylistScheduleTime }],
+      include: [
+        {
+          model: StylistScheduleTime,
+          where: {
+            status: {
+              [Op.ne]: "Unavailable",
+            },
+          },
+        },
+      ],
       order: [
         [Sequelize.literal(`FIELD(day, '${DAYS_ORDER.join("','")}')`), "ASC"],
       ],

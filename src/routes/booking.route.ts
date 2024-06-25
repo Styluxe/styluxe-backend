@@ -204,8 +204,6 @@ router.put(
       const { bookingId } = req.params;
       const { payment_status, booking_status } = req.body;
 
-      console.log("payment", payment_status);
-
       if (!userId) {
         return res.status(401).json({ code: 401, message: "Invalid token." });
       }
@@ -219,6 +217,11 @@ router.put(
 
           {
             model: Stylist,
+            include: [
+              {
+                model: User,
+              },
+            ],
           },
           {
             model: User,
@@ -250,55 +253,10 @@ router.put(
         await booking.save();
       }
 
-      res.status(200).json({ code: 200, data: booking });
-    } catch (error: any) {
-      res.status(500).json({
-        code: 500,
-        status: "Internal Server Error",
-        message: error.message,
-      });
-    }
-  },
-);
+      const fullDate = `${booking?.booking_date}T${booking?.booking_time}:00+07:00`;
 
-//stylist accept status
-router.put(
-  "/accept-booking/:bookingId",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const { userId } = getUserIdFromToken(req, res);
-      const { bookingId } = req.params;
-
-      const { start_time, end_time } = req.body;
-
-      if (!userId) {
-        return res.status(401).json({ code: 401, message: "Invalid token." });
-      }
-
-      const booking = await StylistBooking.findOne<any>({
-        where: { booking_id: bookingId },
-        include: [
-          {
-            model: Stylist,
-            include: [
-              {
-                model: User,
-              },
-            ],
-          },
-          {
-            model: User,
-          },
-        ],
-      });
-
-      if (!booking) {
-        return res.status(404).json({ code: 404, error: "Booking not found" });
-      }
-
-      booking.status = "accepted";
-      await booking.save();
+      const start_time = moment(fullDate).toISOString();
+      const end_time = moment(fullDate).add(30, "minutes").toISOString();
 
       // Create a new conversation entry for the accepted booking
       const newConversation = await Conversation.create<any>({
@@ -320,9 +278,7 @@ router.put(
         },
       ]);
 
-      res
-        .status(200)
-        .json({ code: 200, message: "Booking accepted successfully" });
+      res.status(200).json({ code: 200, data: booking });
     } catch (error: any) {
       res.status(500).json({
         code: 500,
@@ -538,6 +494,76 @@ router.put(
           {
             model: Conversation,
           },
+          {
+            model: PaymentDetails,
+          },
+          {
+            model: Stylist,
+          },
+        ],
+      });
+
+      if (!booking) {
+        return res
+          .status(404)
+          .json({ code: 404, message: "Booking not found" });
+      }
+
+      const conversation = booking.conversation;
+      if (!conversation) {
+        return res
+          .status(404)
+          .json({ code: 404, message: "Conversation not found" });
+      }
+
+      if (conversation.conversation_status === "closed") {
+        return res
+          .status(400)
+          .json({ code: 400, message: "Conversation already closed" });
+      }
+
+      //update stylist balance
+      const paymentDetails = booking.payment_details;
+      const stylist = booking.stylist;
+      if (stylist && paymentDetails && paymentDetails.amount != null) {
+        stylist.balance += paymentDetails.amount;
+        await stylist.save();
+      }
+
+      await conversation.update({
+        conversation_status: "closed",
+        end_time: new Date(),
+      });
+      await booking.update({ status: "done" });
+      res.status(200).json({ code: 200, message: "Conversation ended" });
+    } catch (error: any) {
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+router.put(
+  "/refund-booking/:bookingId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const { bookingId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const booking = await StylistBooking.findOne<any>({
+        where: { booking_id: bookingId },
+        include: [
+          {
+            model: Conversation,
+          },
         ],
       });
 
@@ -564,7 +590,7 @@ router.put(
         conversation_status: "closed",
         end_time: new Date(),
       });
-      await booking.update({ status: "done" });
+      await booking.update({ status: "refunded" });
       res.status(200).json({ code: 200, message: "Conversation ended" });
     } catch (error: any) {
       res.status(500).json({

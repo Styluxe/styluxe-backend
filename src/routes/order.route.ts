@@ -415,13 +415,13 @@ router.put(
       });
 
       // Update payment status if provided
-      if (req.body.payment_status) {
+      if (payment_status) {
         payment.payment_status = payment_status;
         await payment.save();
       }
 
       // Update order status if provided
-      if (req.body.order_status) {
+      if (order_status) {
         order.order_status = order_status;
         await order.save();
       }

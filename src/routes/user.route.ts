@@ -6,6 +6,7 @@ import { Product, ProductImage } from "../models/products";
 import { StylistBooking } from "../models/booking";
 import { Stylist, StylistImage } from "../models/stylists";
 import moment from "moment";
+import bcrypt from "bcrypt";
 
 const router = express.Router();
 
@@ -64,9 +65,45 @@ router.put("/profile", verifyToken, async (req: Request, res: Response) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const updatedUser = await User.update(req.body, {
-      where: { user_id: userId },
-    });
+    const {
+      first_name,
+      last_name,
+      email,
+      mobile,
+      gender,
+      password,
+      new_password,
+    } = req.body;
+
+    if (password) {
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({
+          code: 401,
+          status: "Unauthorized",
+          message: "Invalid password.",
+        });
+      } else {
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+        await User.update(
+          { password: hashedPassword },
+          { where: { user_id: userId } },
+        );
+      }
+    }
+
+    const updatedUser = await User.update(
+      {
+        first_name,
+        last_name,
+        email,
+        mobile,
+        gender,
+      },
+      {
+        where: { user_id: userId },
+      },
+    );
 
     res.status(200).json({
       code: 200,

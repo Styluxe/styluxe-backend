@@ -81,7 +81,7 @@ const setBookingStatusFailed = async () => {
 const setBookingStatusScheduled = async () => {
   const acceptedBookings = await StylistBooking.findAll<any>({
     where: {
-      status: "accepted",
+      status: "scheduled",
     },
   });
 
@@ -95,7 +95,7 @@ const setBookingStatusScheduled = async () => {
 
   if (scheduledBookings.length > 0) {
     for (const booking of scheduledBookings) {
-      booking.status = "scheduled";
+      booking.status = "on going";
       await booking.save();
     }
   }

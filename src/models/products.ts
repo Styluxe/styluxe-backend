@@ -8,6 +8,7 @@ import {
   Table,
   HasOne,
 } from "sequelize-typescript";
+import { Col } from "sequelize/types/utils";
 
 @Table({
   tableName: "product_category",
@@ -129,6 +130,14 @@ export class Product extends Model<Product> {
     allowNull: true,
   })
   declare product_gender: string;
+
+  //isArchived
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  })
+  declare is_archived: boolean;
 
   @HasMany(() => ProductImage)
   declare images: ProductImage[];

@@ -261,3 +261,58 @@ export class Bookmark
   @BelongsTo(() => User)
   declare user: User;
 }
+
+@Table({
+  timestamps: true,
+  tableName: "notifications",
+})
+export class Notification extends Model<Notification> {
+  @Column({
+    type: DataType.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  })
+  declare notification_id: number;
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare user_id: number;
+
+  @ForeignKey(() => User)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  declare trigger_user_id: number;
+
+  @BelongsTo(() => User, "user_id")
+  declare user: User;
+
+  @BelongsTo(() => User, "trigger_user_id")
+  declare trigger_user: User;
+
+  @ForeignKey(() => Post)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare post_id: number;
+
+  @BelongsTo(() => Post)
+  declare post: Post;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  declare content: string;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  })
+  declare read: boolean;
+}

@@ -1,15 +1,16 @@
 import { CronJob } from "cron";
 import { Op } from "sequelize";
-import moment from "moment";
 import { Conversation } from "../models/conversation";
 import { StylistBooking } from "../models/booking";
+import { Stylist } from "../models/stylists";
+import { PaymentDetails } from "../models/orders";
 
 const setConversationStatusClosed = async () => {
   const now = new Date();
 
-  const closedBooking = await StylistBooking.findAll<any>({
+  const closedBookings = await StylistBooking.findAll<any>({
     where: {
-      status: "scheduled",
+      status: "on going",
     },
     include: [
       {
@@ -21,27 +22,40 @@ const setConversationStatusClosed = async () => {
           },
         },
       },
+      {
+        model: PaymentDetails,
+      },
+      {
+        model: Stylist,
+      },
     ],
   });
 
-  if (closedBooking.length > 0) {
-    for (const booking of closedBooking) {
-      booking.status = "done";
-      await booking.save();
-
+  if (closedBookings.length > 0) {
+    for (const booking of closedBookings) {
       const conversation = booking.conversation;
+      const paymentDetails = booking.payment_details;
+      const stylist = booking.stylist;
 
       if (conversation) {
         conversation.conversation_status = "closed";
         await conversation.save();
       }
+
+      if (stylist && paymentDetails && paymentDetails.amount != null) {
+        stylist.balance += paymentDetails.amount;
+        await stylist.save();
+      }
+
+      booking.status = "done";
+      await booking.save();
     }
   }
 
   console.log("Set conversation status closed by cron job");
 };
 
-const conversationjob = new CronJob(
+const conversationJob = new CronJob(
   "* * * * *",
   setConversationStatusClosed,
   null,
@@ -49,5 +63,5 @@ const conversationjob = new CronJob(
 );
 
 export const startConversationCronJobs = () => {
-  conversationjob.start();
+  conversationJob.start();
 };
