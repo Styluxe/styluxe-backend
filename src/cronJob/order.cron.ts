@@ -1,9 +1,11 @@
 // cronJobs.js
 import { CronJob } from "cron";
-import { Op } from "sequelize";
-import { Order, PaymentDetails } from "../models/orders";
+import { Op, Sequelize } from "sequelize";
+import { Order, OrderItem, PaymentDetails } from "../models/orders";
 import { StylistBooking } from "../models/booking";
 import moment from "moment";
+import { Product, ProductSize } from "../models/products";
+import connection from "../db/connection";
 
 // Set payment status failed and order canceled by cron job
 const setOrderPaymentStatusFailed = async () => {
@@ -22,26 +24,61 @@ const setOrderPaymentStatusFailed = async () => {
           },
         },
       },
+      {
+        model: OrderItem,
+        include: [{ model: Product }],
+      },
     ],
   });
 
   if (overdueOrders.length > 0) {
     for (const order of overdueOrders) {
-      const paymentDetails = order.payment_details;
+      const transaction = await connection.transaction();
 
-      if (paymentDetails) {
-        paymentDetails.payment_status = "failed";
-        await paymentDetails.save();
+      try {
+        const paymentDetails = order.payment_details;
+
+        if (paymentDetails) {
+          paymentDetails.payment_status = "failed";
+          await paymentDetails.save({ transaction });
+        }
+
+        order.order_status = "cancelled";
+        await order.save({ transaction });
+
+        // Update stock for each order item
+        for (const orderItem of order.order_items) {
+          const productSize = await ProductSize.findOne({
+            where: {
+              product_id: orderItem.product_id,
+              size: orderItem.size,
+            },
+            transaction,
+          });
+
+          if (productSize) {
+            await productSize.update(
+              {
+                stock: Sequelize.literal(`stock + ${orderItem.quantity}`),
+              },
+              { transaction },
+            );
+          }
+        }
+
+        await transaction.commit();
+      } catch (error) {
+        await transaction.rollback();
+        console.error(
+          "Error setting payment status to failed and cancelling order:",
+          error,
+        );
       }
-
-      order.order_status = "cancelled";
-      await order.save();
     }
   }
 
   console.log("Set payment status failed and order canceled by cron job");
 };
-
 const setBookingStatusFailed = async () => {
   const now = new Date();
   const overdueBookings = await StylistBooking.findAll({

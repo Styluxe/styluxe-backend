@@ -7,11 +7,12 @@ import {
   CartItem,
   PaymentDetails,
 } from "../models/orders";
-import { Product, ProductImage } from "../models/products";
+import { Product, ProductImage, ProductSize } from "../models/products";
 import { getUserIdFromToken, verifyToken } from "../middlewares/verifyToken";
 import { UserAddress, UserCoins } from "../models/users";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { CronJob } from "cron";
+import connection from "../db/connection";
 
 const router = express.Router();
 
@@ -268,44 +269,34 @@ router.post(
   "/create-order",
   verifyToken,
   async (req: Request, res: Response) => {
+    const transaction = await connection.transaction();
+
     try {
       const { userId } = getUserIdFromToken(req, res);
-      const { payment_provider, address_id, discount } = req.body;
+      const { payment_provider, address_id } = req.body;
 
       const shoppingCart = await ShoppingCart.findOne<any>({
         where: { user_id: userId },
+        transaction,
       });
+
+      if (!shoppingCart) {
+        return res.status(404).json({ code: 404, error: "Cart is empty" });
+      }
 
       const cartItems = await CartItem.findAll({
         where: { cart_id: shoppingCart.cart_id },
         include: [{ model: Product }],
+        transaction,
       });
 
-      if (!shoppingCart || cartItems.length === 0) {
+      if (cartItems.length === 0) {
         return res.status(404).json({ code: 404, error: "Cart is empty" });
       }
 
       let total = 0;
       for (const cartItem of cartItems) {
         total += cartItem.quantity * cartItem.product.product_price;
-      }
-
-      if (discount) {
-        total -= discount;
-
-        const removePoints = await UserCoins.update<any>(
-          {
-            coin_amount: 0,
-          },
-          {
-            where: { user_id: userId },
-          },
-        ).catch((error) => {
-          console.error("Error removing points:", error);
-          res
-            .status(500)
-            .json({ code: 500, error: "Internal Server Error (points)" });
-        });
       }
 
       const randomThreeDigit = Math.floor(Math.random() * 1000);
@@ -316,17 +307,15 @@ router.post(
         orderCreationDate.getTime() + 24 * 60 * 60 * 1000,
       );
 
-      const paymentDetails = await PaymentDetails.create<any>({
-        amount: total,
-        transfer_amount: transferAmount,
-        provider: payment_provider,
-        payment_deadline: paymentDeadline,
-      }).catch((error) => {
-        console.error("Error creating payment details:", error);
-        res
-          .status(500)
-          .json({ code: 500, error: "Internal Server Error (payment)" });
-      });
+      const paymentDetails = await PaymentDetails.create<any>(
+        {
+          amount: total,
+          transfer_amount: transferAmount,
+          provider: payment_provider,
+          payment_deadline: paymentDeadline,
+        },
+        { transaction },
+      );
 
       const generateRandomId = () => {
         const shortTimestamp = Math.floor(Date.now() / 1000); // Convert timestamp to seconds instead of milliseconds
@@ -334,36 +323,54 @@ router.post(
         return `${shortTimestamp}${randomPart}`;
       };
 
-      const order = await Order.create<any>({
-        user_id: userId,
-        order_number: "STLXE" + generateRandomId(),
-        payment_id: paymentDetails.payment_details_id,
-        address_id: address_id,
-        total: total,
-        order_status: "pending",
-      }).catch((error) => {
-        console.error("Error creating order:", error);
-        res
-          .status(500)
-          .json({ code: 500, error: "Internal Server Error (order)" });
-      });
+      const order = await Order.create<any>(
+        {
+          user_id: userId,
+          order_number: "STLXE" + generateRandomId(),
+          payment_id: paymentDetails.payment_details_id,
+          address_id: address_id,
+          total: total,
+          order_status: "pending",
+        },
+        { transaction },
+      );
 
       for (const cartItem of cartItems) {
-        await OrderItem.create<any>({
-          order_id: order.order_id,
-          product_id: cartItem.product_id,
-          quantity: cartItem.quantity,
-          size: cartItem.size,
-        }).catch((error) => {
-          console.error("Error creating order item:", error);
-          res
-            .status(500)
-            .json({ code: 500, error: "Internal Server Error (order item)" });
+        await OrderItem.create<any>(
+          {
+            order_id: order.order_id,
+            product_id: cartItem.product_id,
+            quantity: cartItem.quantity,
+            size: cartItem.size,
+          },
+          { transaction },
+        );
+
+        const productSize = await ProductSize.findOne({
+          where: {
+            product_id: cartItem.product_id,
+            size: cartItem.size,
+          },
+          transaction,
         });
+
+        if (productSize) {
+          await productSize.update(
+            {
+              stock: Sequelize.literal(`stock - ${cartItem.quantity}`),
+            },
+            { transaction },
+          );
+        }
       }
 
       // Clear the shopping cart
-      await CartItem.destroy({ where: { cart_id: shoppingCart.cart_id } });
+      await CartItem.destroy({
+        where: { cart_id: shoppingCart.cart_id },
+        transaction,
+      });
+
+      await transaction.commit();
 
       res.status(200).json({
         code: 200,
@@ -371,6 +378,7 @@ router.post(
         data: order,
       });
     } catch (error) {
+      await transaction.rollback();
       console.error("Error creating order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }
@@ -535,10 +543,13 @@ router.put(
   "/cancel-order/:orderId",
   verifyToken,
   async (req: Request, res: Response) => {
+    const transaction = await connection.transaction();
+
     try {
       const orderId = parseInt(req.params.orderId);
 
       if (!orderId) {
+        await transaction.rollback();
         return res.status(400).json({ code: 400, error: "Invalid order ID" });
       }
 
@@ -551,22 +562,51 @@ router.put(
           { model: OrderItem, include: [{ model: Product }] },
           { model: PaymentDetails },
         ],
+        transaction,
       });
 
       if (!order) {
+        await transaction.rollback();
         return res.status(404).json({ code: 404, error: "Order not found" });
       }
 
-      // Update payment status, shipping status, and order status to "Cancelled"
+      // Update payment status and order status to "Cancelled"
       await Promise.all([
-        order.payment_details.update({ payment_status: "failed" }),
-        order.update({ order_status: "cancelled" }),
+        order.payment_details.update(
+          { payment_status: "failed" },
+          { transaction },
+        ),
+        order.update({ order_status: "cancelled" }, { transaction }),
       ]);
+
+      // Return the quantities to the stock
+      for (const orderItem of order.order_items) {
+        const productSize = await ProductSize.findOne({
+          where: {
+            product_id: orderItem.product_id,
+            size: orderItem.size,
+          },
+          transaction,
+        });
+
+        if (productSize) {
+          await productSize.update(
+            {
+              stock: Sequelize.literal(`stock + ${orderItem.quantity}`),
+            },
+            { transaction },
+          );
+        }
+      }
+
+      await transaction.commit();
+
       res.status(200).json({
         code: 200,
         message: "Order cancelled successfully",
       });
     } catch (error) {
+      await transaction.rollback();
       console.error("Error cancelling order:", error);
       res.status(500).json({ code: 500, error: "Internal Server Error" });
     }

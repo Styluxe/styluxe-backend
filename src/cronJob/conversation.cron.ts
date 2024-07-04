@@ -43,7 +43,9 @@ const setConversationStatusClosed = async () => {
       }
 
       if (stylist && paymentDetails && paymentDetails.amount != null) {
-        stylist.balance += paymentDetails.amount;
+        stylist.balance = parseInt(
+          parseFloat(stylist.balance) + paymentDetails.amount,
+        );
         await stylist.save();
       }
 

@@ -61,6 +61,7 @@ export class Stylist extends Model<Stylist> {
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    defaultValue: 0,
   })
   declare balance: number;
 
