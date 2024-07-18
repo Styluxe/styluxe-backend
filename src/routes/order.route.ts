@@ -390,6 +390,7 @@ router.put(
   "/order-status/:orderId",
   verifyToken,
   async (req: Request, res: Response) => {
+    const transaction = await connection.transaction();
     try {
       const orderId = parseInt(req.params.orderId);
 
@@ -402,44 +403,54 @@ router.put(
       const order = await Order.findOne<any>({
         where: { order_id: orderId },
         include: [{ model: PaymentDetails }],
+        transaction,
       });
 
       if (!order) {
+        await transaction.rollback();
         return res.status(404).json({ code: 404, error: "Order not found" });
       }
 
       if (order.user_id !== userId) {
+        await transaction.rollback();
         return res.status(403).json({
           code: 403,
           error: "You are not authorized to update this order",
         });
       }
 
-      const { payment_status, order_status } = req.body;
+      const { payment_status, order_status, receipt } = req.body;
 
       // Find the associated payment details
       const payment = await PaymentDetails.findOne<any>({
         where: { payment_details_id: order.payment_id },
+        transaction,
       });
 
+      console.log("receipt", receipt);
+
       // Update payment status if provided
-      if (payment_status) {
+      if (payment && payment_status && receipt) {
         payment.payment_status = payment_status;
-        await payment.save();
+        payment.payment_receipt_url = receipt;
+        await payment.save({ transaction });
       }
 
       // Update order status if provided
       if (order_status) {
         order.order_status = order_status;
-        await order.save();
+        await order.save({ transaction });
       }
+
+      await transaction.commit();
 
       res
         .status(200)
         .json({ code: 200, message: "Order updated successfully" });
-    } catch (error) {
+    } catch (error: any) {
+      await transaction.rollback();
       console.error("Error updating order status:", error);
-      res.status(500).json({ code: 500, error: "Internal Server Error" });
+      res.status(500).json({ code: 500, error: error.message });
     }
   },
 );

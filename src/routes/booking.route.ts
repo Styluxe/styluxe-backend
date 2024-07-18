@@ -7,6 +7,7 @@ import { User } from "../models/users";
 import { Op } from "sequelize";
 import { Conversation, Participant } from "../models/conversation";
 import moment from "moment";
+import connection from "../db/connection";
 
 const router = express.Router();
 
@@ -199,12 +200,14 @@ router.put(
   "/update-status/:bookingId",
   verifyToken,
   async (req: Request, res: Response) => {
+    const t = await connection.transaction();
     try {
       const { userId } = getUserIdFromToken(req, res);
       const { bookingId } = req.params;
       const { payment_status, booking_status } = req.body;
 
       if (!userId) {
+        await t.rollback();
         return res.status(401).json({ code: 401, message: "Invalid token." });
       }
 
@@ -214,7 +217,6 @@ router.put(
           {
             model: PaymentDetails,
           },
-
           {
             model: Stylist,
             include: [
@@ -227,6 +229,102 @@ router.put(
             model: User,
           },
         ],
+        transaction: t,
+      });
+
+      if (!booking) {
+        await t.rollback();
+        return res.status(404).json({ code: 404, error: "Booking not found" });
+      }
+
+      const { payment_details_id } = booking.payment_details;
+
+      const payment = await PaymentDetails.findOne<any>({
+        where: { payment_details_id },
+        transaction: t,
+      });
+
+      if (!payment) {
+        await t.rollback();
+        return res.status(404).json({ code: 404, error: "Payment not found" });
+      }
+
+      if (payment_status) {
+        payment.payment_status = payment_status;
+        await payment.save({ transaction: t });
+      }
+
+      if (booking_status) {
+        booking.status = booking_status;
+        await booking.save({ transaction: t });
+      }
+
+      const fullDate = `${booking?.booking_date}T${booking?.booking_time}:00+07:00`;
+      const start_time = moment(fullDate).toISOString();
+      const end_time = moment(fullDate).add(30, "minutes").toISOString();
+
+      // Create a new conversation entry for the accepted booking
+      const newConversation = await Conversation.create<any>(
+        {
+          booking_id: bookingId,
+          start_time: start_time,
+          end_time: end_time,
+          conversation_status: "open",
+        },
+        { transaction: t },
+      );
+
+      // Add participants to the conversation (stylist and customer)
+      await Participant.bulkCreate<any>(
+        [
+          {
+            conversation_id: newConversation.conversation_id,
+            user_id: booking.stylist.user.user_id,
+          },
+          {
+            conversation_id: newConversation.conversation_id,
+            user_id: booking.customer.user_id,
+          },
+        ],
+        { transaction: t },
+      );
+
+      await t.commit();
+      res.status(200).json({ code: 200, data: booking });
+    } catch (error: any) {
+      await t.rollback();
+      res.status(500).json({
+        code: 500,
+        status: "Internal Server Error",
+        message: error.message,
+      });
+    }
+  },
+);
+
+//cancel booking
+router.put(
+  "/cancel-booking/:bookingId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getUserIdFromToken(req, res);
+      const { bookingId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ code: 401, message: "Invalid token." });
+      }
+
+      const booking = await StylistBooking.findOne<any>({
+        where: { booking_id: bookingId },
+        include: [
+          {
+            model: Conversation,
+          },
+          {
+            model: PaymentDetails,
+          },
+        ],
       });
 
       if (!booking) {
@@ -234,7 +332,6 @@ router.put(
       }
 
       const { payment_details_id } = booking.payment_details;
-
       const payment = await PaymentDetails.findOne<any>({
         where: { payment_details_id },
       });
@@ -243,40 +340,11 @@ router.put(
         return res.status(404).json({ code: 404, error: "Payment not found" });
       }
 
-      if (payment_status) {
-        payment.payment_status = payment_status;
-        await payment.save();
-      }
+      payment.payment_status = "failed";
+      await payment.save();
 
-      if (booking_status) {
-        booking.status = booking_status;
-        await booking.save();
-      }
-
-      const fullDate = `${booking?.booking_date}T${booking?.booking_time}:00+07:00`;
-
-      const start_time = moment(fullDate).toISOString();
-      const end_time = moment(fullDate).add(30, "minutes").toISOString();
-
-      // Create a new conversation entry for the accepted booking
-      const newConversation = await Conversation.create<any>({
-        booking_id: bookingId,
-        start_time: start_time,
-        end_time: end_time,
-        conversation_status: "open",
-      });
-
-      // Add participants to the conversation (stylist and customer)
-      await Participant.bulkCreate<any>([
-        {
-          conversation_id: newConversation.conversation_id,
-          user_id: booking.stylist.user.user_id,
-        },
-        {
-          conversation_id: newConversation.conversation_id,
-          user_id: booking.customer.user_id,
-        },
-      ]);
+      booking.status = "cancelled";
+      await booking.save();
 
       res.status(200).json({ code: 200, data: booking });
     } catch (error: any) {
