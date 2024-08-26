@@ -10,7 +10,6 @@ import {
   Notification,
 } from "../models/posts";
 import { User } from "../models/users";
-import { where } from "sequelize";
 const router = express.Router();
 
 //get all post order by createdAt

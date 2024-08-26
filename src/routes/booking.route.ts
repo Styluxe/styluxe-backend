@@ -8,6 +8,7 @@ import { Op } from "sequelize";
 import { Conversation, Participant } from "../models/conversation";
 import moment from "moment";
 import connection from "../db/connection";
+import { io } from "../main";
 
 const router = express.Router();
 
@@ -605,6 +606,12 @@ router.put(
         end_time: new Date(),
       });
       await booking.update({ status: "done" });
+
+      io.emit("close-conversation", {
+        conversationId: conversation.conversation_id,
+        status: "closed",
+      });
+
       res.status(200).json({ code: 200, message: "Conversation ended" });
     } catch (error: any) {
       res.status(500).json({

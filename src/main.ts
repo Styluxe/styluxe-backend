@@ -66,6 +66,9 @@ app.use("/stylist", StylistRoutes);
 app.use("/booking", BookingRoutes);
 app.use("/midtrans", midtransRoutes);
 app.use("/admin", adminRoutes);
+app.use("/", (req, res) => {
+  res.status(200).json({ status: "Server is running smoothly" });
+});
 
 const port = process.env.PORT || 8080;
 

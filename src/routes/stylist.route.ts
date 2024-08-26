@@ -703,7 +703,7 @@ router.post("/review", verifyToken, async (req: Request, res: Response) => {
         message: "You are not authorized to perform this action.",
       });
     }
-
+    // Create the review
     const review = await StylistReview.create<any>({
       stylist_id,
       user_id: userId,
@@ -717,10 +717,20 @@ router.post("/review", verifyToken, async (req: Request, res: Response) => {
       if (booking) {
         booking.isReviewed = true;
         await booking.save();
+      } else {
+        return res.status(404).json({
+          code: 404,
+          status: "Not Found",
+          message: "Booking not found.",
+        });
       }
     }
 
-    res.status(200).json({ code: 200, data: review });
+    res.status(201).json({
+      code: 201,
+      status: "Created",
+      message: "Review created successfully.",
+    });
   } catch (error: any) {
     res.status(500).json({
       code: 500,
